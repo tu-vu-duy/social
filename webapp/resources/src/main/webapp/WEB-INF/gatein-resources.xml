@@ -58,6 +58,42 @@
   </module>
 
   <module>
+    <name>livequery-plugin</name>
+    <script>
+       <name>livequery-script</name>
+       <path>/javascript/eXo/livequery-plugin.js</path>
+    </script>
+    <depends>
+      <module>jquery</module>
+    </depends>
+  </module>
+
+  <module>
+    <name>token-plugin</name>
+    <script>
+       <name>token-script</name>
+       <path>/javascript/eXo/token-plugin.js</path>
+    </script>
+    <depends>
+      <module>jquery</module>
+    </depends>
+  </module>
+
+  <module>
+    <name>setup</name>
+    <script>
+       <name>setup-script</name>
+       <path>/javascript/eXo/setup.js</path>
+    </script>
+    <depends>
+      <module>livequery-plugin</module>
+    </depends>
+    <depends>
+      <module>token-plugin</module>
+    </depends>
+  </module>
+
+  <module>
     <name>social-webui</name> <!-- webui level -->
     <script>
       <name>eXo.social.webui.UIForm</name><!-- function not available from Portal UIForm -->

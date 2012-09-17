@@ -371,9 +371,12 @@
       <depends>
         <module>base</module>
       </depends>
+      <depends>
+        <module>setup</module>
+      </depends>
     </module>
   </portlet>
-   
+
   <portlet>
     <name>AllSpacesPortlet</name>
     <module>

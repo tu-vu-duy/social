@@ -29,13 +29,20 @@
     <css-path>/skin/DefaultSkin/Stylesheet.css</css-path>
     <css-priority>1</css-priority>
   </portal-skin>
-
-  <!--portlet-skin>
-    <application-name>web</application-name>
-    <portlet-name>SpaceHomePagePortlet</portlet-name>
+  
+  <portal-skin>
     <skin-name>Default</skin-name>
-    <css-path>/templates/skin/webui/component/UIHomePagePortlet/DefaultStylesheet.css</css-path>
-  </portlet-skin-->
+    <skin-module>TokenPlugin</skin-module>
+    <css-path>/skin/DefaultSkin/token-input.css</css-path>
+    <css-priority>1</css-priority>
+  </portal-skin>
+
+  <portal-skin>
+    <skin-name>Default</skin-name>
+    <skin-module>TokenPluginFacebook</skin-module>
+    <css-path>/skin/DefaultSkin/token-input-facebook.css</css-path>
+    <css-priority>1</css-priority>
+  </portal-skin>
 
 </gatein-resources>
 
