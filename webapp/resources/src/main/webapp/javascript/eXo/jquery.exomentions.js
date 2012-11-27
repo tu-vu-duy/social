@@ -35,6 +35,7 @@
     elastic : true,
     elasticStyle : {},
     idAction : "",
+    actionLink : null,
     classes : {
       autoCompleteItemActive : "active"
     },
@@ -57,6 +58,10 @@
     }
   };
 
+  var regexpURL = /(https?:\/\/)?((www\.[\w+]+\.[\w+]+\.?(:\d+)?)|([\w+]+\.[\w+]+\.?(\w+)?(:\d+)?))(\/\S*)?/g;
+  // /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/
+  // /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
+
   function log(v) {
     if(window.console && window.console.log) {
       window.console.log(v);
@@ -68,12 +73,12 @@
       id : '',
       val : '',
       mentions : [],
-      data : ''
+      data : '',
+      actionLink : {}
     };
     return mentionCache;
   }
 
-  
   var utils = {
     htmlEncode : function(str) {
       return _.escape(str);
@@ -86,6 +91,24 @@
     },
     rtrim : function(string) {
       return string.replace(/\s+$/, "");
+    },
+    validateWWWURL : function (url) {
+      if(url.indexOf('www.') > 0) {
+        return /(https?:\/\/)?(www\.[\w+]+\.[\w+]+\.?(:\d+)?)/.test(url);
+      }
+      return true;
+    },
+    searchFirstURL : function(x) {
+      log(x);
+      var result = String(x).match(regexpURL);
+      if(result && result.length > 0) {
+        for(var i = 0; i < result.length; ++i) {
+          if(result[i].length > 0 && this.validateWWWURL(result[i])) {
+            return result[i];
+          }
+        }
+      }
+      return "";
     },
     getSimpleValue : function(val) {
       return val.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
@@ -136,16 +159,27 @@
 
   var eXoMentions = function(settings) {
 
-    var jElmTarget, elmInputBox, elmInputWrapper, elmAutocompleteList, elmWrapperBox, elmActiveAutoCompleteItem, valueBeforMention;
+    var jElmTarget, elmInputBox, elmInputWrapper, elmAutocompleteList, elmWrapperBox, elmActiveAutoCompleteItem;
+    var valueBeforMention;
     var mentionsCollection = [];
     var autocompleteItemCollection = {};
     var inputBuffer = [];
     var currentDataQuery = '';
     var cursor = '<div id="cursorText"></div>&nbsp;';
-
+    // action add link
+    var ActionLink = {
+        isRun : false,
+        actionLink : null,
+        hasNotLink : true,
+        linkSaved : ''
+    };
+    
     settings = $.extend(true, {}, defaultSettings, settings);
 
     KEY.MENTION = settings.triggerChar.charCodeAt(0);
+
+    ActionLink.isRun = (settings.actionLink && settings.actionLink.length > 0);
+    ActionLink.actionLink = settings.actionLink;
 
     function initTextarea() {
 
@@ -365,6 +399,7 @@
           after = after.substr(0, info.from) + $('<div/>').html(text).text() + ' ' + cursor + after.substr(info.to);
           elmInputBox.val(after);
           setCaratPosition(elmInputBox);
+          autoAddLink(text);
         }
         elmInputBox.css('cursor', 'text');
         elmInputBox.parent().find('.placeholder').hide();
@@ -587,6 +622,8 @@
 
     function onInputBoxKeyUp(e) {
       backspceBroswerFix(e);
+      
+      checkAutoAddLink(e);
       //
     }
     
@@ -603,7 +640,33 @@
         //cRange.pasteHTML('text');
       }
     }
-
+    
+    function checkAutoAddLink(e) {
+      var keyCode = (e.which || e.keyCode);
+      if(keyCode && keyCode === KEY.SPACE) {
+        log('checking ....');
+        var val = getInputBoxFullValue();
+        autoAddLink(val);
+      }
+    }
+    
+    function autoAddLink(val) {
+      if(ActionLink.isRun && ActionLink.hasNotLink) {
+        linkSaved = utils.searchFirstURL(val);
+        if(linkSaved && linkSaved.length > 0) {
+          log('running ....');
+          var action = ActionLink.actionLink;
+          action = $((typeof action === 'string') ? ('#'+action) : action);
+          if(action.length > 0) {
+            ActionLink.hasNotLink = false;
+            saveCacheData();
+            $('#InputLink').val(linkSaved);
+            action.trigger('click');
+          }
+        }
+      }
+    }
+    
     function autoSetKeyCode(elm) {
       try {
         if(utils.isIE && utils.brVersion < 9) {
@@ -785,6 +848,7 @@
           dataCache.mentions = mentionsCollection;
           dataCache.val = getInputBoxFullValue();
           dataCache.data = mentionsCollection.length > 0 ? elmInputBox.data('messageText') : getInputBoxValue();
+          dataCache.actionLink = ActionLink;
           parentForm.data(key, dataCache);
         }
       }
@@ -801,6 +865,7 @@
           mentionsCollection = dataCache.mentions;
           elmInputBox.val(dataCache.val);
           elmInputBox.data('messageText', dataCache.data);
+          ActionLink = dataCache.actionLink;
           updateValues();
         }
       }

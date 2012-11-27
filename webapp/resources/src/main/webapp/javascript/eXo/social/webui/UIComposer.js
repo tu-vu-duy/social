@@ -100,7 +100,8 @@ var UIComposer = {
             callback.call(this, responseData);
           });
         },
-        idAction : "ShareButton",
+        idAction : 'ShareButton',
+        actionLink : 'AttachButton',
         elasticStyle : {
           maxHeight : '38px',
           minHeight : '24px'
