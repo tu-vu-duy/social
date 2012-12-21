@@ -97,6 +97,11 @@
       <artifactId>exo.portal.webui.core</artifactId>
       <version>${org.exoplatform.portal.version}</version>
       <scope>provided</scope>
+	</dependency>
+
+    <dependency>
+      <groupId>org.juzu</groupId>
+      <artifactId>juzu-core</artifactId>
     </dependency>
 
     <dependency>
@@ -104,6 +109,11 @@
       <artifactId>exo.portal.webui.eXo</artifactId>
       <version>${org.exoplatform.portal.version}</version>
       <scope>provided</scope>
+	</dependency>
+
+    <dependency>
+      <groupId>org.juzu</groupId>
+      <artifactId>juzu-plugins-portlet</artifactId>
     </dependency>
 
     <dependency>
@@ -152,8 +162,8 @@
         <dependencies>
           <dependency>
             <groupId>org.juzu</groupId>
-            <artifactId>juzu-builder</artifactId>
-            <version>${juzu.version}</version>
+            <artifactId>juzu-bom-core</artifactId>
+            <version>${org.juzu.version}</version>
           </dependency>
         </dependencies>
         <configuration>
@@ -168,9 +178,35 @@
             </goals>
             <phase>package</phase>
             <configuration>
-              <finalName>${project.build.finalName}</finalName>
+              <classifier>gatein</classifier>
               <descriptorRefs>
                 <descriptorRef>gatein</descriptorRef>
+              </descriptorRefs>
+            </configuration>
+          </execution>
+          <execution>
+            <id>liferay</id>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <classifier>liferay</classifier>
+              <descriptorRefs>
+                <descriptorRef>liferay</descriptorRef>
+              </descriptorRefs>
+            </configuration>
+          </execution>
+          <execution>
+            <id>tomcat-guice</id>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <classifier>tomcat-guice</classifier>
+              <descriptorRefs>
+                <descriptorRef>tomcat-guice</descriptorRef>
               </descriptorRefs>
             </configuration>
           </execution>
