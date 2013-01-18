@@ -400,6 +400,10 @@ public class UISpaceNavigationNodeSelector extends UIContainer {
       }
 
       DataStorage dataService = uiNodeSelector.getApplicationComponent(DataStorage.class);
+<<<<<<< HEAD
+=======
+
+>>>>>>> Fixed some change package Setting in commons
       // get selected page
       String pageId = selectedPageNode.getPageRef();
       Page selectPage = (pageId != null) ? dataService.getPage(pageId) : null;
