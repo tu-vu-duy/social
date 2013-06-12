@@ -20,22 +20,28 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>social</artifactId>
+    <artifactId>social-component</artifactId>
     <groupId>org.exoplatform.social</groupId>
     <version>4.1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>social-component</artifactId>
-  <version>4.1.0-SNAPSHOT</version>
-  <packaging>pom</packaging>
-  <name>eXo Social Component</name>
-  <description>eXo Social Component</description>
-  <modules>
-    <module>common</module>
-    <module>core</module>
-    <module>service</module>
-    <module>opensocial</module>
-    <module>webui</module>
-    <module>notification</module>
-  </modules>
+  <groupId>org.exoplatform.social</groupId>
+  <artifactId>social-component-notification</artifactId>
+  <name>eXo Social Notification Component</name>
+  <description>eXo Social Notification Component</description>
+  <dependencies>
+    <dependency>
+      <groupId>org.exoplatform.commons</groupId>
+      <artifactId>commons-component-common</artifactId>
+    </dependency>
+    <!-- These dependency is required to compile but reported as useless by mvn dependency:analyze -->
+    <dependency>
+      <groupId>org.exoplatform.social</groupId>
+      <artifactId>social-component-common</artifactId>
+    </dependency>
+    <!-- These dependency is required to compile but reported as useless by mvn dependency:analyze -->
+    <dependency>
+      <groupId>org.exoplatform.social</groupId>
+      <artifactId>social-component-core</artifactId>
+    </dependency>
+  </dependencies>
 </project>
-
