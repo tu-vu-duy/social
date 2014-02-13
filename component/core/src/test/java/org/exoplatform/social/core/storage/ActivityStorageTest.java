@@ -297,7 +297,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * and {@link org.exoplatform.social.core.storage.ActivityStorage#getUserActivities(org.exoplatform.social.core.identity.model.Identity)}
    *
    */
-  @MaxQueryNumber(10230)
+  @MaxQueryNumber(12675)
   public void testGetActivities() throws ActivityStorageException {
     final int totalNumber = 20;
     final String activityTitle = "activity title";
@@ -349,7 +349,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * Test {@link org.exoplatform.social.core.storage.ActivityStorage#getNumberOfUserActivities(org.exoplatform.social.core.identity.model.Identity)}
    */
 
-  @MaxQueryNumber(15747)
+  @MaxQueryNumber(18207)
   public void testGetActivitiesCount() throws ActivityStorageException {
 
     final int totalNumber = 20;
@@ -1058,7 +1058,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4748)
+  @MaxQueryNumber(5021)
   public void testGetUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1159,7 +1159,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4739)
+  @MaxQueryNumber(5012)
   public void testGetNumberOfUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1216,7 +1216,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4739)
+  @MaxQueryNumber(5012)
   public void testGetNumberOfNewerOnUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1276,7 +1276,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4739)
+  @MaxQueryNumber(5012)
   public void testGetNewerOnUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1460,7 +1460,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.12
    */
-  @MaxQueryNumber(2380)
+  @MaxQueryNumber(2503)
   public void testGetNumberOfNewerOnUserSpacesActivitiesByTimestamp() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1501,7 +1501,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4739)
+  @MaxQueryNumber(5012)
   public void testGetNumberOfOlderOnUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1564,7 +1564,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.0-Beta3
    */
-  @MaxQueryNumber(4739)
+  @MaxQueryNumber(5012)
   public void testGetOlderOnUserSpacesActivities() throws Exception {
     SpaceService spaceService = this.getSpaceService();
     Space space = this.getSpaceInstance(spaceService, 0);
@@ -1922,7 +1922,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * 
    * @throws ActivityStorageException
    */
-  @MaxQueryNumber(1269)
+  @MaxQueryNumber(1371)
   public void testGetActivitiesByPagingWithoutCreatingComments() throws ActivityStorageException {
     checkCleanData();
     final int totalActivityCount = 9;
@@ -2134,7 +2134,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
   /**
    * Tests {@link ActivityStorage#getOlderOnActivityFeed(Identity, Long, int)}.
    */
-  @MaxQueryNumber(1011)
+  @MaxQueryNumber(1041)
   public void testGetOlderOnActivityFeedWithTimestamp() throws Exception {
     checkCleanData();
     createActivities(5, demoIdentity);
@@ -2319,7 +2319,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * 
    * @throws Exception
    */
-  @MaxQueryNumber(4748)
+  @MaxQueryNumber(5021)
   public void testGetNewerOnUserSpacesActivitiesWithTimestamp() throws Exception {
     checkCleanData();
     SpaceService spaceService = this.getSpaceService();
@@ -2398,7 +2398,7 @@ public class ActivityStorageTest extends AbstractCoreTest {
    * 
    * @throws Exception
    */
-  @MaxQueryNumber(5012)
+  @MaxQueryNumber(5285)
   public void testGetOlderOnUserSpacesActivitiesWithTimestamp() throws Exception {
     checkCleanData();
     SpaceService spaceService = this.getSpaceService();
