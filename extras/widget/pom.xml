@@ -25,6 +25,7 @@
     <version>4.1.x-soc-upgrade-gatein-3.7.x-SNAPSHOT</version>
   </parent>
   <artifactId>social-extras-widget</artifactId>
+  <version>4.1.x-soc-upgrade-gatein-3.7.x-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>eXo Social Extras - Widget</name>
   <description>eXo Social Extras - Widget</description>
