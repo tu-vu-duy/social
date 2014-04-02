@@ -76,8 +76,6 @@ public class UILinkActivityComposer extends UIActivityComposer {
   public static final String DESCRIPTION_PARAM = "description";
   public static final String COMMENT_PARAM = "comment";
   public static final String HTML_PARAM = "html";
-  public static final String SINGLE_COMMA = "single_comma";
-  public static final String DOUBLE_COMMA = "double_comma";
 
   private static final String MSG_ERROR_INVALID_LINK = "UILinkComposerPlugin.msg.error.Attach_Link";
   
@@ -178,8 +176,8 @@ public class UILinkActivityComposer extends UIActivityComposer {
     templateParams.put(HTML_PARAM, mediaObject != null ? mediaObject.getHtml() : null);
     
     //
-    linkShare_.setTitle(linkShare_.getTitle().replaceAll("'", SINGLE_COMMA).replaceAll("\"", DOUBLE_COMMA));
-    linkShare_.setDescription(linkShare_.getDescription().replaceAll("'", SINGLE_COMMA).replaceAll("\"", DOUBLE_COMMA));
+//    linkShare_.setTitle(linkShare_.getTitle());
+//    linkShare_.setDescription(linkShare_.getDescription());
     
     setLinkInfoDisplayed(true);
   }

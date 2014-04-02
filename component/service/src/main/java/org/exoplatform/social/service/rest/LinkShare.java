@@ -20,6 +20,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -327,6 +328,15 @@ public class LinkShare extends DefaultFilter {
     parser.setProperty("http://cyberneko.org/html/properties/default-encoding", "UTF-8");
     parser.setProperty("http://cyberneko.org/html/properties/filters", filter);
     parser.setDocumentHandler(this);
+
+    String link = this.link;
+    URL url = new URL(link);
+    String query = url.getQuery();
+    if (query != null) {
+      //
+      String newQuery = URLDecoder.decode(query, "UTF-8");
+      link = link.replace(query, newQuery);
+    }
     XMLInputSource source = new XMLInputSource(null, link, null);
     source.setEncoding(encoding);
     try {
@@ -337,9 +347,9 @@ public class LinkShare extends DefaultFilter {
     } catch (IOException e) {
       // Process as normal behavior in case the link is in the valid form
       // but have been blocked or some other same reasons.
-      this.title = link;
+      this.title = this.link;
     } catch (Exception e) {
-      this.title = link;
+      this.title = this.link;
     }
   }
   
