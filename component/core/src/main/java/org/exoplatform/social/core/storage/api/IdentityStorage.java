@@ -271,4 +271,13 @@ public interface IdentityStorage {
    * @since 4.0.0.Alpha1
    */
   public String getProfileActivityId(Profile profile, AttachedActivityType type);
+  
+  /**
+   * Process enable/disable Identity
+   * 
+   * @param identity The Identity enable
+   * @param isEnable true if the user is enable, false if not
+   * @since 4.1.x
+   */
+  public void processEnabledIdentity(Identity identity, boolean isEnable);
 }

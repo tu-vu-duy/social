@@ -24,6 +24,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringEscapeUtils;
+import org.exoplatform.commons.chromattic.ChromatticManager;
+import org.exoplatform.container.PortalContainer;
+import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.organization.User;
+import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
+import org.exoplatform.social.core.chromattic.entity.DisabledEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
@@ -33,8 +39,10 @@ import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
+import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.api.SpaceStorage;
+import org.exoplatform.social.core.storage.cache.CachedIdentityStorage;
 import org.exoplatform.social.core.storage.exception.NodeAlreadyExistsException;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.test.AbstractCoreTest;
@@ -49,17 +57,23 @@ import org.exoplatform.social.core.test.QueryNumberTest;
 public class IdentityStorageImplTestCase extends AbstractCoreTest {
   private IdentityStorageImpl storage;
   private RelationshipStorage relationshipStorage;
+  private CachedIdentityStorage cachedIdentityStorage;
+  OrganizationService orgSrv;
   private ActivityStorage activityStorage;
   private SpaceStorage spaceStorage;
   private List<String> tearDownIdentityList;
+  private SocialChromatticLifeCycle lifecycle;
 
   @Override
   public void setUp() throws Exception {
     super.setUp();
     storage = (IdentityStorageImpl) getContainer().getComponentInstanceOfType(IdentityStorageImpl.class);
     relationshipStorage = (RelationshipStorage) getContainer().getComponentInstanceOfType(RelationshipStorageImpl.class);
+    cachedIdentityStorage = (CachedIdentityStorage) getContainer().getComponentInstanceOfType(CachedIdentityStorage.class);
+    orgSrv = (OrganizationService) getContainer().getComponentInstanceOfType(OrganizationService.class);
     activityStorage = (ActivityStorage) getContainer().getComponentInstanceOfType(ActivityStorageImpl.class);
     spaceStorage = (SpaceStorage) getContainer().getComponentInstanceOfType(SpaceStorageImpl.class);
+    lifecycle = lifecycleLookup();
     tearDownIdentityList = new ArrayList<String>();
     assertNotNull(storage);
   }
@@ -71,6 +85,12 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
     }
     
     super.tearDown();
+  }
+  
+  private static SocialChromatticLifeCycle lifecycleLookup() {
+    PortalContainer container = PortalContainer.getInstance();
+    ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
+    return (SocialChromatticLifeCycle) manager.getLifeCycle(SocialChromatticLifeCycle.SOCIAL_LIFECYCLE_NAME);
   }
 
   @MaxQueryNumber(114)
@@ -99,7 +119,7 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
   }
 
 
-  @MaxQueryNumber(57)
+  @MaxQueryNumber(72)
   public void testCreateIdentittyExits() throws Exception {
     Identity newIdentity = new Identity("organization", "newDuplicate");
 
@@ -129,7 +149,7 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
     }
   }
 
-  @MaxQueryNumber(57)
+  @MaxQueryNumber(72)
   public void testFindByIdExists() throws Exception {
     Identity newIdentity = new Identity("organization", "exists");
 
@@ -314,7 +334,7 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
 
   }
 
-  @MaxQueryNumber(138)
+  @MaxQueryNumber(144)
   public void testHardDeleteSpaceLastManager() throws Exception {
 
     Identity user1 = new Identity("organization", "user1");
@@ -668,7 +688,7 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
    tearDownIdentityList.add(newIdentity.getId());
   }
 
-  @MaxQueryNumber(384)
+  @MaxQueryNumber(408)
   public void testFindIdentityWithFilter() throws Exception {
 
     addIdentity("o", "toto", "male", "cadre");
@@ -712,6 +732,15 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
     assertEquals(2, storage.getIdentitiesByProfileFilter("o", t2, 0, 10, false).size());
     assertEquals(1, storage.getIdentitiesByProfileFilter("o", filterB2Skills, 0, 10, false).size());
     assertEquals("totota", storage.getIdentitiesByProfileFilter("o", filterB2Skills, 0, 10, false).get(0).getRemoteId());
+    
+    //disable user totota
+    IdentityStorage identityStorage = (IdentityStorage) getContainer().getComponentInstanceOfType(IdentityStorage.class);
+    identityStorage.processEnabledIdentity(itotota, false);
+    assertEquals(2, storage.getIdentitiesByProfileFilter("o", t, 0, 10, false).size());
+    
+    //enable totota
+    identityStorage.processEnabledIdentity(itotota, true);
+    assertEquals(3, storage.getIdentitiesByProfileFilter("o", t, 0, 10, false).size());
   }
 
   @MaxQueryNumber(105)
@@ -1097,7 +1126,7 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
     tearDownIdentityList.add(newIdentity.getId());
   }
 
-  @MaxQueryNumber(108)
+  @MaxQueryNumber(111)
   public void testProfileAvatarURL() throws Exception{
     Identity newIdentity = new Identity(FakeIdentityProvider.NAME, "externalIdentity");
     //
@@ -1132,6 +1161,127 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
     
     tearDownIdentityList.add(newIdentity.getId());
     
+  }
+
+  /**
+   * Test with case of get identities relate to disabled user.
+   * 
+   */
+  @MaxQueryNumber(4740)
+  public void testIdentitiesOfDisabledUser() throws Exception {
+    IdentityStorage identityStorage = (IdentityStorage) getContainer().getComponentInstanceOfType(IdentityStorage.class);
+    final String PROVIDER_ID = "organization";
+    
+    { // disabled user is not included in identities counter
+      Identity testIdentity = new Identity(PROVIDER_ID, "test");
+      storeUserInfo(testIdentity);
+      
+      assertEquals(1, storage.getIdentitiesCount(PROVIDER_ID));
+      
+      //
+      identityStorage.processEnabledIdentity(testIdentity, false);
+      assertEquals(0, storage.getIdentitiesCount(PROVIDER_ID));
+
+      //
+      identityStorage.processEnabledIdentity(testIdentity, true);
+      assertEquals(1, storage.getIdentitiesCount(PROVIDER_ID));
+      
+      removeUserInfo(testIdentity);
+    }
+    { // disabled users not included in connections
+      Identity idA = new Identity(PROVIDER_ID, "userA");
+      Identity idB = new Identity(PROVIDER_ID, "userB");
+      storeUserInfo(idA, idB);
+      
+      assertEquals(2, storage.getIdentitiesCount(PROVIDER_ID));
+      
+      //
+      assertEquals(0, relationshipStorage.getConnectionsCount(idA));
+      assertEquals(0, relationshipStorage.getConnectionsCount(idB));
+      
+      //
+      Relationship relationship = new Relationship(idA, idB, Relationship.Type.CONFIRMED);
+      relationshipStorage.saveRelationship(relationship);
+
+      assertEquals(1, relationshipStorage.getConnectionsCount(idA));
+      assertEquals(1, relationshipStorage.getConnectionsCount(idB));
+      
+      // disable user idA
+      identityStorage.processEnabledIdentity(idA, false);
+      assertEquals(0, relationshipStorage.getConnectionsCount(idB));
+      
+      // enable user idA
+      identityStorage.processEnabledIdentity(idA, true);
+      assertEquals(1, relationshipStorage.getConnectionsCount(idA));
+      assertEquals(1, relationshipStorage.getConnectionsCount(idB));
+      
+      //
+      relationshipStorage.removeRelationship(relationship);
+      removeUserInfo(idA, idB);
+    }
+    { // disabled user is not included in suggestions
+      Identity idA = new Identity(PROVIDER_ID, "userA");
+      Identity idB = new Identity(PROVIDER_ID, "userB");
+      storeUserInfo(idA, idB);
+      
+      assertEquals(1, relationshipStorage.getSuggestions(idB, 0, 5).size());
+      
+      identityStorage.processEnabledIdentity(idA, false);
+      
+      IdentityEntity got = lifecycle.getSession().findById(IdentityEntity.class, idA.getId());
+      DisabledEntity mixin = lifecycle.getSession().getEmbedded(got, DisabledEntity.class);
+      assertNotNull(mixin);
+      
+      assertEquals(0, relationshipStorage.getSuggestions(idB, 0, 5).size());
+      
+      identityStorage.processEnabledIdentity(idA, true);
+      removeUserInfo(idA, idB);
+    }
+    { // disabled user is not included in Invtation's list
+      Identity idA = new Identity(PROVIDER_ID, "userA");
+      Identity idB = new Identity(PROVIDER_ID, "userB");
+      storeUserInfo(idA, idB);
+      
+      Relationship relationship = new Relationship(idA, idB, Relationship.Type.PENDING);
+      relationshipStorage.saveRelationship(relationship);
+      
+      // idB
+      assertEquals(1, relationshipStorage.getIncomingRelationshipsCount(idB));
+      
+      // disable user who makes the invitation
+      identityStorage.processEnabledIdentity(idA, false);
+      assertEquals(0, relationshipStorage.getIncomingRelationshipsCount(idB));
+      
+      // re-enable invitor 
+      identityStorage.processEnabledIdentity(idA, true);
+      assertEquals(1, relationshipStorage.getIncomingRelationshipsCount(idB));
+      
+      //
+      relationshipStorage.removeRelationship(relationship);
+      removeUserInfo(idA, idB);
+    }
+  }
+
+  private void storeUserInfo(Identity... identities) throws Exception {
+    for (Identity identity : identities) {
+      storage._createIdentity(identity);
+      storage._createProfile(identity.getProfile());
+      
+      User user = orgSrv.getUserHandler().createUserInstance(identity.getRemoteId());
+      user.setDisplayName(identity.getProfile().getFullName());
+      user.setPassword("gtn");
+      user.setFirstName(identity.getRemoteId());
+      user.setLastName(identity.getRemoteId());
+      user.setEmail(identity.getRemoteId() + "@gmail.com");
+      orgSrv.getUserHandler().createUser(user, false);
+    }
+  }
+  
+  private void removeUserInfo(Identity... identities) throws Exception {
+    for (Identity identity : identities) {
+      orgSrv.getUserHandler().removeUser(identity.getRemoteId(), false);
+      storage.deleteIdentity(identity);
+    }
   }
 
   private static String escapeJCRSpecialCharacters(String string) {

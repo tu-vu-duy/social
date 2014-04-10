@@ -36,6 +36,8 @@ public class Identity {
   */
   boolean isDeleted;
   
+  private boolean isEnable;
+  
   /** The profile. */
   Profile profile;
 
@@ -49,6 +51,7 @@ public class Identity {
    */
   public Identity(String id) {
     this.id = id;
+    this.isEnable = true;
   }
 
   /**
@@ -60,6 +63,7 @@ public class Identity {
   public Identity(String providerId, String remoteId) {
     this.remoteId = remoteId;
     this.providerId = providerId;
+    this.isEnable = true;
   }
 
   /**
@@ -98,6 +102,20 @@ public class Identity {
   */
   public void setDeleted(boolean isDeleted) {
     this.isDeleted = isDeleted;
+  }
+
+  /**
+   * @return the isEnable
+   */
+  public boolean isEnable() {
+    return isEnable;
+  }
+
+  /**
+   * @param isEnable the isEnable to set
+   */
+  public void setEnable(boolean isEnable) {
+    this.isEnable = isEnable;
   }
 
   /**

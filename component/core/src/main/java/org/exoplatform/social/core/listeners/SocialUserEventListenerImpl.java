@@ -16,6 +16,7 @@
  */
 package org.exoplatform.social.core.listeners;
 
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
@@ -29,7 +30,6 @@ import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
-import org.exoplatform.social.core.storage.impl.StorageUtils;
 
 /**
  * Listens to user updating events.
@@ -150,5 +150,16 @@ public class SocialUserEventListenerImpl extends UserEventListener {
       RequestLifeCycle.end();
     }
 
+  }
+  
+  @Override
+  public void postSetEnabled(User user) throws Exception {
+    RequestLifeCycle.begin(PortalContainer.getInstance());
+    try {
+      IdentityManager idm = CommonsUtils.getService(IdentityManager.class);
+      idm.processEnabledIdentity(user.getUserName(), user.isEnabled());
+    } finally {
+      RequestLifeCycle.end();
+    }
   }
 }
