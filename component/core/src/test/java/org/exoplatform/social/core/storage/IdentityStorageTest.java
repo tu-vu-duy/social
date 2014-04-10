@@ -8,6 +8,8 @@ import org.chromattic.api.ChromatticSession;
 import org.exoplatform.commons.chromattic.ChromatticManager;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
+import org.exoplatform.social.core.chromattic.entity.DisabledEntity;
+import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.chromattic.entity.ProviderRootEntity;
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
 import org.exoplatform.social.core.identity.model.Identity;
@@ -120,7 +122,34 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(gotIdentity);
     
   }
-  
+
+  /**
+   * Tests {@link IdenityStorage#processEnabledIdentity(Identity)}
+   */
+  @MaxQueryNumber(99)
+  public void testEnableIdentity() {
+    final String remoteUser = "user";
+    Identity identity = new Identity(OrganizationIdentityProvider.NAME, remoteUser);
+    identityStorage.saveIdentity(identity);
+    //
+    assertNotNull(identity.getId());
+    //
+    identityStorage.processEnabledIdentity(identity, false);
+    IdentityEntity got = lifecycle.getSession().findById(IdentityEntity.class, identity.getId());
+    //
+    assertNotNull(got);
+    //
+    DisabledEntity mixin = lifecycle.getSession().getEmbedded(got, DisabledEntity.class);
+    assertNotNull(mixin);
+    //
+    identityStorage.processEnabledIdentity(identity, true);
+    //
+    mixin = lifecycle.getSession().getEmbedded(got, DisabledEntity.class);
+    assertNull(mixin);
+
+    tearDownIdentityList.add(identity);
+  }
+
   /**
    * Tests {@link IdenityStorage#deleteIdentity(Identity)}
    *
@@ -163,7 +192,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityById(String)}
    *
    */
-  @MaxQueryNumber(72)
+  @MaxQueryNumber(75)
   public void testFindIdentityById() {
     final String remoteUser = "identity1";
     Identity toSaveIdentity = new Identity(OrganizationIdentityProvider.NAME, remoteUser);
@@ -484,6 +513,15 @@ public class IdentityStorageTest extends AbstractCoreTest {
     filter.setFirstCharacterOfName('L');
     idsCount = identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter);
     assertEquals("Number of identity must be " + idsCount, 5, idsCount);
+    
+    //disable username1
+    Identity identity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, "username1");
+    identityStorage.processEnabledIdentity(identity, false);
+    assertEquals(4, identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter));
+    
+    //enable username1
+    identityStorage.processEnabledIdentity(identity, true);
+    assertEquals(5, identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter));
   }
 
   /**
@@ -523,8 +561,14 @@ public class IdentityStorageTest extends AbstractCoreTest {
     idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
     assertEquals(5, idsCount);
     
-//    idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
-//    assertEquals(0, idsCount);
+    //disable username1
+    Identity identity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, "username1");
+    identityStorage.processEnabledIdentity(identity, false);
+    assertEquals(4, identityStorage.getIdentitiesByProfileFilterCount("organization", pf));
+    
+    //enable username1
+    identityStorage.processEnabledIdentity(identity, true);
+    assertEquals(5, identityStorage.getIdentitiesByProfileFilterCount("organization", pf));
   }
   
   /**
@@ -567,7 +611,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityByProfileFilterCount(String, ProfileFilter)}
    * 
    */
-  @MaxQueryNumber(258)
+  @MaxQueryNumber(264)
   public void testUpdateIdentity() throws Exception {
     String providerId = OrganizationIdentityProvider.NAME;
     String newProviderId = "space";
@@ -590,11 +634,24 @@ public class IdentityStorageTest extends AbstractCoreTest {
   /**
    *  Tests {@link IdenityStorage#getIdentitiesCount(String)}
    */
-  @MaxQueryNumber(650)
+  @MaxQueryNumber(765)
   public void testGetIdentitiesCount() throws Exception {
-    populateData();
-    int identitiesCount = identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME);
-    assertEquals("Number of identities must be " + identitiesCount, 5, identitiesCount);
+    int numberUser = 10;
+    int numberDisableUser = 5;
+    // create user
+    List<Identity> identities = new ArrayList<Identity>();
+    for (int i = 0; i < numberUser; i++) {
+      Identity identity = new Identity(OrganizationIdentityProvider.NAME, "user" + i);
+      identityStorage.saveIdentity(identity);
+      identities.add(identity);
+    }
+    assertEquals(10, identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME));
+    // disable users
+    for (int i = 0; i < numberDisableUser; i++) {
+      Identity identity = identities.get(i);
+      identityStorage.processEnabledIdentity(identity, false);
+    }
+    assertEquals(numberUser - numberDisableUser, identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME));
   }
 
   @MaxQueryNumber(700)
