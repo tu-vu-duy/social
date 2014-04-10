@@ -34,6 +34,7 @@ import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.FakeIdentityProvider;
+import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.model.AvatarAttachment;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
@@ -1260,6 +1261,44 @@ public class IdentityStorageImplTestCase extends AbstractCoreTest {
       relationshipStorage.removeRelationship(relationship);
       removeUserInfo(idA, idB);
     }
+  }
+  
+  /**
+   * The member portlet of a space filter its members by calling this method, that's why it need an unit test
+   * 
+   * @throws Exception
+   */
+  public void testGetIdentitiesForMentions() throws Exception {
+    String providerId = OrganizationIdentityProvider.NAME;
+    Identity identity1 = addIdentity(providerId, "user1", "male", "developer");
+    Identity identity2 = addIdentity(providerId, "user2", "female", "tester");
+    Identity identity3 = addIdentity(providerId, "user3", "female", "designer");
+    Identity identity4 = addIdentity(providerId, "user4", "male", "leader");
+
+    Identity identity = storage.findIdentity(providerId, "user1");
+    assertNotNull(identity.getProfile());
+    assertEquals(true, identity.isEnable());
+    ProfileFilter filter = new ProfileFilter();
+    filter.setName("u");
+    filter.setCompany("");
+    filter.setPosition("");
+    filter.setSkills("");
+    
+    List<Identity> identities = storage.getIdentitiesForMentions(providerId, filter, 0, 10, true);
+    assertEquals(4, identities.size());
+    
+    //disable user1
+    IdentityStorage identityStorage = (IdentityStorage) getContainer().getComponentInstanceOfType(IdentityStorage.class);
+    identityStorage.processEnabledIdentity(identity1, false);
+    
+    identities = storage.getIdentitiesForMentions(providerId, filter, 0, 10, true);
+    assertEquals(3, identities.size());
+    
+    //re-enable user1
+    identityStorage.processEnabledIdentity(identity1, true);
+    
+    identities = storage.getIdentitiesForMentions(providerId, filter, 0, 10, true);
+    assertEquals(4, identities.size());
   }
 
   private void storeUserInfo(Identity... identities) throws Exception {
