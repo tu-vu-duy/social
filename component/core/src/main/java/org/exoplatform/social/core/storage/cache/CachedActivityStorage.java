@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 
+import org.exoplatform.management.annotations.ManagedBy;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -44,14 +45,19 @@ import org.exoplatform.social.core.storage.cache.model.key.IdentityKey;
 import org.exoplatform.social.core.storage.cache.model.key.ListActivitiesKey;
 import org.exoplatform.social.core.storage.cache.selector.ActivityOwnerCacheSelector;
 import org.exoplatform.social.core.storage.cache.selector.ScopeCacheSelector;
+import org.exoplatform.social.core.storage.cache.statistic.ActivityStorageStatistic;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager;
+import org.exoplatform.social.core.storage.cache.statistic.ViewBean;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 import org.exoplatform.social.core.storage.impl.ActivityStorageImpl;
+import org.picocontainer.Startable;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
  */
-public class CachedActivityStorage implements ActivityStorage {
+@ManagedBy(ActivityStorageStatistic.class)
+public class CachedActivityStorage implements ViewBean, ActivityStorage, Startable {
 
   /** Logger */
   private static final Log LOG = ExoLogger.getLogger(CachedActivityStorage.class);
@@ -65,6 +71,8 @@ public class CachedActivityStorage implements ActivityStorage {
   private final FutureExoCache<ListActivitiesKey, ListActivitiesData, ServiceContext<ListActivitiesData>> activitiesCache;
 
   private final ActivityStorageImpl storage;
+  
+  private ActivityStorageStatistic statistic;
 
   public void clearCache() {
 
@@ -1804,6 +1812,24 @@ public class CachedActivityStorage implements ActivityStorage {
   public void setInjectStreams(boolean mustInject) {
     storage.setInjectStreams(mustInject);
     
+  }
+
+  @Override
+  public void start() {
+    statistic.registerManager(this);
+    statistic.put(ByteStaticManager.TYPE.activity, exoActivityCache);
+    statistic.put(ByteStaticManager.TYPE.activityCount, exoActivitiesCountCache);
+    statistic.put(ByteStaticManager.TYPE.activities, exoActivitiesCache);
+  }
+
+  @Override
+  public void stop() {
+    
+  }
+
+  @Override
+  public void setViewBean(ByteStaticManager staticManager) {
+    this.statistic = (ActivityStorageStatistic) staticManager;
   }
   
 }

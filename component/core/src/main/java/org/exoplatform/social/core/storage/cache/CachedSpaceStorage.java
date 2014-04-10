@@ -17,7 +17,11 @@
 
 package org.exoplatform.social.core.storage.cache;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.exoplatform.container.PortalContainer;
+import org.exoplatform.management.annotations.ManagedBy;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -28,31 +32,35 @@ import org.exoplatform.social.core.space.SpaceFilter;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.SpaceStorageException;
+import org.exoplatform.social.core.storage.api.SpaceStorage;
+import org.exoplatform.social.core.storage.cache.loader.ServiceContext;
 import org.exoplatform.social.core.storage.cache.model.data.IntegerData;
 import org.exoplatform.social.core.storage.cache.model.data.ListIdentitiesData;
 import org.exoplatform.social.core.storage.cache.model.data.ListSpacesData;
+import org.exoplatform.social.core.storage.cache.model.data.SpaceData;
 import org.exoplatform.social.core.storage.cache.model.data.SpaceSimpleData;
 import org.exoplatform.social.core.storage.cache.model.key.ListIdentitiesKey;
 import org.exoplatform.social.core.storage.cache.model.key.ListSpacesKey;
 import org.exoplatform.social.core.storage.cache.model.key.SpaceFilterKey;
+import org.exoplatform.social.core.storage.cache.model.key.SpaceKey;
+import org.exoplatform.social.core.storage.cache.model.key.SpaceRefKey;
 import org.exoplatform.social.core.storage.cache.model.key.SpaceType;
 import org.exoplatform.social.core.storage.cache.selector.IdentityCacheSelector;
 import org.exoplatform.social.core.storage.cache.selector.ScopeCacheSelector;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager.TYPE;
+import org.exoplatform.social.core.storage.cache.statistic.SpaceStatistic;
+import org.exoplatform.social.core.storage.cache.statistic.ViewBean;
 import org.exoplatform.social.core.storage.impl.SpaceStorageImpl;
-import org.exoplatform.social.core.storage.api.SpaceStorage;
-import org.exoplatform.social.core.storage.cache.loader.ServiceContext;
-import org.exoplatform.social.core.storage.cache.model.data.SpaceData;
-import org.exoplatform.social.core.storage.cache.model.key.SpaceKey;
-import org.exoplatform.social.core.storage.cache.model.key.SpaceRefKey;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.picocontainer.Startable;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
  */
-public class CachedSpaceStorage implements SpaceStorage {
+
+@ManagedBy(SpaceStatistic.class)
+public class CachedSpaceStorage implements ViewBean, Startable, SpaceStorage {
 
   /** Logger */
   private static final Log LOG = ExoLogger.getLogger(CachedSpaceStorage.class);
@@ -73,6 +81,8 @@ public class CachedSpaceStorage implements SpaceStorage {
   private final SpaceStorageImpl storage;
   private CachedActivityStorage cachedActivityStorage;
   private CachedIdentityStorage cachedIdentityStorage;
+
+  private SpaceStatistic spaceStatistic;
 
   /**
    * Default limit activities to clear cache.
@@ -1356,6 +1366,26 @@ public class CachedSpaceStorage implements SpaceStorage {
 
     //
     return buildSpaces(keys);
+  }
+  
+
+  @Override
+  public void setViewBean(ByteStaticManager staticManager) {
+    this.spaceStatistic = (SpaceStatistic) staticManager;
+  }
+
+  @Override
+  public void start() {
+    
+    spaceStatistic.put(TYPE.space, exoSpaceCache);
+    spaceStatistic.put(TYPE.spaceSimple, exoSpaceSimpleCache);
+    spaceStatistic.put(TYPE.refSpace, exoRefSpaceCache);
+    spaceStatistic.put(TYPE.spacesCount, exoSpacesCountCache);
+    spaceStatistic.put(TYPE.spaces, exoSpacesCache);
+  }
+
+  @Override
+  public void stop() {
   }
 }
 

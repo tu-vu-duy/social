@@ -20,6 +20,7 @@ package org.exoplatform.social.core.storage.cache;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.exoplatform.management.annotations.ManagedBy;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -45,7 +46,12 @@ import org.exoplatform.social.core.storage.cache.model.key.ListIdentitiesKey;
 import org.exoplatform.social.core.storage.cache.model.key.ListSpaceMembersKey;
 import org.exoplatform.social.core.storage.cache.model.key.SpaceKey;
 import org.exoplatform.social.core.storage.cache.selector.IdentityCacheSelector;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager.TYPE;
+import org.exoplatform.social.core.storage.cache.statistic.IdentityStorageStatistic;
+import org.exoplatform.social.core.storage.cache.statistic.ViewBean;
 import org.exoplatform.social.core.storage.impl.IdentityStorageImpl;
+import org.picocontainer.Startable;
 
 /**
  * Cache support for IdentityStorage.
@@ -53,7 +59,8 @@ import org.exoplatform.social.core.storage.impl.IdentityStorageImpl;
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
  */
-public class CachedIdentityStorage implements IdentityStorage {
+@ManagedBy(IdentityStorageStatistic.class)
+public class CachedIdentityStorage implements ViewBean, Startable, IdentityStorage {
 
   /** Logger */
   private static final Log LOG = ExoLogger.getLogger(CachedIdentityStorage.class);
@@ -71,6 +78,8 @@ public class CachedIdentityStorage implements IdentityStorage {
   private final FutureExoCache<ListIdentitiesKey, ListIdentitiesData, ServiceContext<ListIdentitiesData>> identitiesCache;
 
   private final IdentityStorageImpl storage;
+  
+  private IdentityStorageStatistic stramStorageStatistic;
 
   void clearCache() {
 
@@ -547,4 +556,25 @@ public class CachedIdentityStorage implements IdentityStorage {
     return buildIdentities(keys);
     
   }
+
+  @Override
+  public void setViewBean(ByteStaticManager staticManager) {
+    this.stramStorageStatistic = (IdentityStorageStatistic) staticManager;
+  }
+
+  @Override
+  public void start() {
+    stramStorageStatistic.put(TYPE.identity, exoIdentityCache);
+    stramStorageStatistic.put(TYPE.identityIndex, exoIdentityIndexCache);
+    stramStorageStatistic.put(TYPE.profile, exoProfileCache);
+    stramStorageStatistic.put(TYPE.identityCount, exoIdentitiesCountCache);
+    stramStorageStatistic.put(TYPE.identities, exoIdentitiesCache);
+
+  }
+
+  @Override
+  public void stop() {
+
+  }
+
 }

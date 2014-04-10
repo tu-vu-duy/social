@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.exoplatform.container.PortalContainer;
+import org.exoplatform.management.annotations.ManagedBy;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -49,7 +50,12 @@ import org.exoplatform.social.core.storage.cache.model.key.RelationshipType;
 import org.exoplatform.social.core.storage.cache.model.key.SuggestionKey;
 import org.exoplatform.social.core.storage.cache.selector.RelationshipCacheSelector;
 import org.exoplatform.social.core.storage.cache.selector.SuggestionCacheSelector;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager;
+import org.exoplatform.social.core.storage.cache.statistic.ByteStaticManager.TYPE;
+import org.exoplatform.social.core.storage.cache.statistic.RelationshipStatistic;
+import org.exoplatform.social.core.storage.cache.statistic.ViewBean;
 import org.exoplatform.social.core.storage.impl.RelationshipStorageImpl;
+import org.picocontainer.Startable;
 
 /**
  * Cache support for RelationshipStorage.
@@ -57,7 +63,8 @@ import org.exoplatform.social.core.storage.impl.RelationshipStorageImpl;
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
  */
-public class CachedRelationshipStorage implements RelationshipStorage {
+@ManagedBy(RelationshipStatistic.class)
+public class CachedRelationshipStorage implements ViewBean, Startable, RelationshipStorage {
 
   /** Logger */
   private static final Log LOG = ExoLogger.getLogger(CachedRelationshipStorage.class);
@@ -84,6 +91,8 @@ public class CachedRelationshipStorage implements RelationshipStorage {
   private final IdentityStorage identityStorage;
   private CachedActivityStorage cachedActivityStorage;
 
+  private RelationshipStatistic relationshipStatistic;
+  
   //
   private static final RelationshipKey RELATIONSHIP_NOT_FOUND = new RelationshipKey(null);
 
@@ -699,5 +708,22 @@ public class CachedRelationshipStorage implements RelationshipStorage {
     //
     return buildSuggestions(keys);
   }
-  
+
+  @Override
+  public void setViewBean(ByteStaticManager staticManager) {
+    this.relationshipStatistic = (RelationshipStatistic) staticManager;
+  }
+
+  @Override
+  public void start() {
+    relationshipStatistic.put(TYPE.relationship, exoRelationshipCache);
+    relationshipStatistic.put(TYPE.relationshipByIdentity, exoRelationshipByIdentityCache);
+    relationshipStatistic.put(TYPE.relationshipCount, exoRelationshipCountCache);
+    relationshipStatistic.put(TYPE.relationships, exoRelationshipsCache);
+    relationshipStatistic.put(TYPE.suggestion, exoSuggestionCache);
+  }
+
+  @Override
+  public void stop() {
+  }
 }

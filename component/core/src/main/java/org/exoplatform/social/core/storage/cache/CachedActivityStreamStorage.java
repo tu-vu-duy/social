@@ -29,7 +29,6 @@ public class CachedActivityStreamStorage implements ActivityStreamStorage {
   
   private final ActivityStreamStorageImpl storage;
   private final SocialStorageCacheService cacheService;
-  
   public CachedActivityStreamStorage(final ActivityStreamStorageImpl storage, final SocialStorageCacheService cacheService) {
     this.storage = storage;
     this.cacheService = cacheService;

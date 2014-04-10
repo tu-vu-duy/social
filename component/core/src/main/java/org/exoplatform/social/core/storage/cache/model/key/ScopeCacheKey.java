@@ -17,10 +17,7 @@
 
 package org.exoplatform.social.core.storage.cache.model.key;
 
-import org.exoplatform.container.PortalContainer;
-import org.exoplatform.services.jcr.RepositoryService;
-
-import javax.jcr.RepositoryException;
+import org.exoplatform.commons.utils.CommonsUtils;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
@@ -62,13 +59,11 @@ public class ScopeCacheKey implements CacheKey {
   }
 
   public static String getCurrentRepositoryName() {
-    RepositoryService repositoryService = (RepositoryService)
-                                          PortalContainer.getInstance().getComponentInstanceOfType(RepositoryService.class);
     try {
-      return repositoryService.getCurrentRepository().getConfiguration().getName();
-    }
-    catch (RepositoryException e) {
-      throw new RuntimeException(e);
+      return CommonsUtils.getRepository().getConfiguration().getName();
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "social";
     }
   }
 
