@@ -28,7 +28,6 @@ import org.exoplatform.social.webui.composer.PopupContainer;
 import org.exoplatform.social.webui.composer.UIComposer;
 import org.exoplatform.social.webui.composer.UIComposer.PostContext;
 import org.exoplatform.social.webui.profile.UIUserActivitiesDisplay;
-import org.exoplatform.web.controller.QualifiedName;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.core.UIPortletApplication;
 import org.exoplatform.webui.core.lifecycle.UIApplicationLifecycle;
@@ -79,7 +78,11 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
   }
 
   public boolean isComposerDisplayed() {
-    return composerDisplayed;
+    if (viewerName.equals(ownerName)) {
+      return true;
+    }
+
+    return Utils.getOwnerIdentity().isEnable();
   }
   
   public String getActivityId() {

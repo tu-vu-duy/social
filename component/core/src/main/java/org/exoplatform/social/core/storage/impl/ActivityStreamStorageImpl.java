@@ -44,7 +44,6 @@ import org.exoplatform.social.core.chromattic.filter.JCRFilterLiteral;
 import org.exoplatform.social.core.chromattic.utils.ActivityRefIterator;
 import org.exoplatform.social.core.chromattic.utils.ActivityRefList;
 import org.exoplatform.social.core.identity.model.Identity;
-import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.space.model.Space;
@@ -905,6 +904,9 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     HidableEntity hidableActivity = _getMixin(activityEntity, HidableEntity.class, true);
     if (context.getAdded() != null) {
       for (Identity identity : context.getAdded()) {
+        if (!identity.isEnable()) {
+          continue;
+        }
         IdentityEntity identityEntity = identityStorage._findIdentityEntity(identity.getProviderId(), identity.getRemoteId());
 
         //
@@ -922,6 +924,9 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     if (context.getRemoved() != null) {
 
       for (Identity identity : context.getRemoved()) {
+        if (!identity.isEnable()) {
+          continue;
+        }
         IdentityEntity identityEntity = identityStorage._findIdentityEntity(identity.getProviderId(), identity.getRemoteId());
           
         ActivityRefListEntity listRef = type.refsOf(identityEntity);
