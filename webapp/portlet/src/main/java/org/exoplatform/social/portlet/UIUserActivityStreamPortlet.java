@@ -86,7 +86,11 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
   }
 
   public boolean isComposerDisplayed() {
-    return composerDisplayed;
+    if (viewerName.equals(ownerName)) {
+      return true;
+    }
+
+    return Utils.getOwnerIdentity().isEnable();
   }
   
   public String getActivityId() {
