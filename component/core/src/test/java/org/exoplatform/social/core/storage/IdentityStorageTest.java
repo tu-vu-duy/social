@@ -7,6 +7,14 @@ import java.util.List;
 import org.chromattic.api.ChromatticSession;
 import org.exoplatform.commons.chromattic.ChromatticManager;
 import org.exoplatform.container.PortalContainer;
+import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.GroupHandler;
+import org.exoplatform.services.organization.Membership;
+import org.exoplatform.services.organization.MembershipHandler;
+import org.exoplatform.services.organization.MembershipType;
+import org.exoplatform.services.organization.MembershipTypeHandler;
+import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.organization.User;
 import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
 import org.exoplatform.social.core.chromattic.entity.DisabledEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
@@ -18,6 +26,7 @@ import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvide
 import org.exoplatform.social.core.model.AvatarAttachment;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.service.LinkProvider;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
@@ -654,9 +663,10 @@ public class IdentityStorageTest extends AbstractCoreTest {
     assertEquals(numberUser - numberDisableUser, identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME));
   }
 
-  @MaxQueryNumber(700)
+  @MaxQueryNumber(2635)
   public void testGetSpaceMemberByProfileFilter() throws Exception {
     populateData();
+    populateUser("username4");
     
     Space space = new Space();
     space.setApp("app");
@@ -667,7 +677,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     space.setType(DefaultSpaceApplicationHandler.NAME);
     space.setVisibility(Space.PUBLIC);
     space.setPriority(Space.INTERMEDIATE_PRIORITY);
-    space.setGroupId("/space/space");
+    space.setGroupId(SpaceUtils.createGroup(space.getPrettyName(), "username4"));
     space.setUrl(space.getPrettyName());
     String[] managers = new String[] {};
     String[] members = new String[] {"username1", "username2", "username3"};
@@ -692,6 +702,10 @@ public class IdentityStorageTest extends AbstractCoreTest {
     
     profileFilter.setName("3");
     identities = identityStorage.getSpaceMemberIdentitiesByProfileFilter(space, profileFilter, Type.MEMBER, 0, 2);
+    assertEquals(1, identities.size());
+    
+    addUserToGroupWithMembership("username4", space.getGroupId(), MembershipTypeHandler.ANY_MEMBERSHIP_TYPE);
+    identities = identityStorage.getSpaceMemberIdentitiesByProfileFilter(space, new ProfileFilter(), Type.MANAGER, 0, 10);
     assertEquals(1, identities.size());
   }
   
@@ -772,6 +786,37 @@ public class IdentityStorageTest extends AbstractCoreTest {
       identity.setProfile(profile);
       tearDownIdentityList.add(identity);
       identityStorage.saveProfile(profile);
+    }
+  }
+  
+  private User populateUser(String name) {
+    OrganizationService os = SpaceUtils.getOrganizationService();
+    User user = os.getUserHandler().createUserInstance(name);
+    
+    try {
+      os.getUserHandler().createUser(user, false);
+    } catch (Exception e) {
+      return null;
+    }
+    return user;
+  }
+  
+  private static void addUserToGroupWithMembership(String remoteId, String groupId, String membership) {
+    OrganizationService organizationService = SpaceUtils.getOrganizationService();
+    try {
+      // TODO: checks whether user is already manager?
+      MembershipHandler membershipHandler = organizationService.getMembershipHandler();
+      Membership found = membershipHandler.findMembershipByUserGroupAndType(remoteId, groupId, membership);
+      if (found != null) {
+        return;
+      }
+      User user = organizationService.getUserHandler().findUserByName(remoteId);
+      MembershipType membershipType = organizationService.getMembershipTypeHandler().findMembershipType(membership);
+      GroupHandler groupHandler = organizationService.getGroupHandler();
+      Group existingGroup = groupHandler.findGroupById(groupId);
+      membershipHandler.linkMembership(user, existingGroup, membershipType, true);
+    } catch (Exception e) {
+      return;
     }
   }
 }
