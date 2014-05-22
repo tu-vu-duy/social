@@ -250,10 +250,15 @@ public class BaseUIActivity extends UIForm {
     return getI18N(comments);
   }
 
+  @Deprecated
   public List<ExoSocialActivity> getAllComments() {
     return activityCommentsListAccess.loadAsList(0, activityCommentsListAccess.getSize());
   }
 
+  public int getAllCommentSize() {
+    return activityCommentsListAccess.getSize();
+  }
+  
   public String[] getIdentityLikes() {
     return identityLikes;
   }

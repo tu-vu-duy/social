@@ -23,9 +23,11 @@ import org.exoplatform.portal.application.RequestNavigationData;
 import org.exoplatform.portal.mop.SiteType;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.services.organization.MembershipTypeHandler;
 import org.exoplatform.social.common.router.ExoRouter;
 import org.exoplatform.social.common.router.ExoRouter.Route;
 import org.exoplatform.social.core.space.SpaceAccessType;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.webui.Utils;
 import org.exoplatform.web.application.Application;
@@ -72,7 +74,8 @@ public class SpaceAccessApplicationLifecycle implements ApplicationLifecycle<Web
       String remoteId = Utils.getViewerRemoteId();
       
     
-      if (inSuperAdminGroup(remoteId, space)) {
+      if (inSuperAdminGroup(remoteId, space) 
+          || SpaceUtils.isUserHasMembershipTypesInGroup(remoteId, space.getGroupId(), MembershipTypeHandler.ANY_MEMBERSHIP_TYPE)) {
         return;
       }
       
