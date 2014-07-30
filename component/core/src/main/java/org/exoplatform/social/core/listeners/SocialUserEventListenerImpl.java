@@ -17,6 +17,7 @@
 package org.exoplatform.social.core.listeners;
 
 import org.exoplatform.commons.utils.CommonsUtils;
+import org.apache.commons.lang.StringUtils;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
@@ -108,7 +109,11 @@ public class SocialUserEventListenerImpl extends UserEventListener {
           hasUpdated = true;
         }
         
-        if ((uDisplayName != null) && (!uDisplayName.equals(pFullName))) {
+        if (uDisplayName == null || StringUtils.isEmpty(uDisplayName)) {
+          uDisplayName = uFirstName + " " + uLastName;
+        } 
+        
+        if(!uDisplayName.equals(pFullName)) {
           profile.setProperty(Profile.FULL_NAME, uDisplayName);
           hasUpdated = true;
         }
@@ -120,8 +125,6 @@ public class SocialUserEventListenerImpl extends UserEventListener {
         
       }
       
-      
-  
       if (hasUpdated) {
         idm.updateProfile(profile);
       }

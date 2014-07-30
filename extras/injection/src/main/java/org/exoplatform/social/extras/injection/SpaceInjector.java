@@ -2,16 +2,18 @@ package org.exoplatform.social.extras.injection;
 
 import java.util.HashMap;
 
-import org.exoplatform.social.core.space.SpaceUtils;
+import org.exoplatform.container.xml.InitParams;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
+import org.exoplatform.social.core.storage.impl.StorageUtils;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
  */
 public class SpaceInjector extends AbstractSocialInjector {
-  private final int FLUSH_LIMIT = 1;
+
+  private final int FLUSH_LIMIT = 10;
 
   /** . */
   private static final String NUMBER = "number";
@@ -27,6 +29,10 @@ public class SpaceInjector extends AbstractSocialInjector {
 
   /** . */
   private static final String SPACE_PREFIX = "spacePrefix";
+  
+  public SpaceInjector(PatternInjectorConfig pattern) {
+    super(pattern);
+  }
 
   @Override
   public void inject(HashMap<String, String> params) throws Exception {
@@ -37,7 +43,7 @@ public class SpaceInjector extends AbstractSocialInjector {
     int to = param(params, TO_USER);
     String userPrefix = params.get(USER_PREFIX);
     String spacePrefix = params.get(SPACE_PREFIX);
-    init(userPrefix, spacePrefix);
+    init(userPrefix, spacePrefix, userSuffixValue, spaceSuffixValue);
     
     int spaceCounter = 0;
 
@@ -47,7 +53,7 @@ public class SpaceInjector extends AbstractSocialInjector {
         for (int j = 0; j < number; ++j) {
 
           //
-          String owner = userBase + i;
+          String owner = this.userNameSuffixPattern(i);
           String spaceName = spaceName();
 
           Space space = new Space();
@@ -60,6 +66,7 @@ public class SpaceInjector extends AbstractSocialInjector {
           space.setVisibility(Space.PRIVATE);
           space.setRegistration(Space.OPEN);
           space.setPriority(Space.INTERMEDIATE_PRIORITY);
+          space.setEditor(owner);
 
           //
           spaceService.createSpace(space, owner);
@@ -67,7 +74,7 @@ public class SpaceInjector extends AbstractSocialInjector {
           if (++spaceCounter == FLUSH_LIMIT) {
             spaceCounter = 0;
             //
-            SpaceUtils.endRequest();
+            StorageUtils.persistJCR(true);
             getLog().info("Flush session...");
           }
           //
@@ -76,7 +83,7 @@ public class SpaceInjector extends AbstractSocialInjector {
         }
       }
     } finally {
-      SpaceUtils.endRequest();
+      StorageUtils.persistJCR(false);
     }
     
     

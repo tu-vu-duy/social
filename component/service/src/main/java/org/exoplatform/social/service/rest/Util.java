@@ -426,7 +426,7 @@ public final class Util {
    *
    * @return the current http servlet request
    */
-  private static HttpServletRequest getCurrentServletRequest() {
+  public static HttpServletRequest getCurrentServletRequest() {
     EnvironmentContext environmentContext = EnvironmentContext.getCurrent();
     return (HttpServletRequest) environmentContext.get(HttpServletRequest.class);
   }
@@ -589,7 +589,6 @@ public final class Util {
       try {
         query = new URL(url).getQuery();
         if (query != null) {
-          //
           String newQuery = URLDecoder.decode(query, "UTF-8");
           return url.replace(query, newQuery);
         }

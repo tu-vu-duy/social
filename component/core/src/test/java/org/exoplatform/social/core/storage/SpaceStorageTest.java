@@ -1591,7 +1591,7 @@ public class SpaceStorageTest extends AbstractCoreTest {
    * @throws Exception
    * @since 1.2.8
    */
-  @MaxQueryNumber(510)
+  @MaxQueryNumber(603)
   public void testRenameSpace() throws Exception {
     int number = 1;
     Space space = this.getSpaceInstance(number);
@@ -1670,7 +1670,7 @@ public class SpaceStorageTest extends AbstractCoreTest {
    *
    * @throws Exception
    */
-  @MaxQueryNumber(288)
+  @MaxQueryNumber(291)
   public void testUpdateSpace() throws Exception {
     int number = 1;
     Space space = this.getSpaceInstance(number);

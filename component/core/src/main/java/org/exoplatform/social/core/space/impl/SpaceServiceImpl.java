@@ -428,9 +428,6 @@ public class SpaceServiceImpl implements SpaceService {
     space.setGroupId(groupId);
     space.setUrl(space.getPrettyName());
 
-    saveSpace(space, true);
-    spaceLifeCycle.spaceCreated(space, creator);
-    
     try {
       SpaceApplicationHandler spaceApplicationHandler = getSpaceApplicationHandler(space);
       spaceApplicationHandler.initApps(space, getSpaceApplicationConfigPlugin());
@@ -439,15 +436,13 @@ public class SpaceServiceImpl implements SpaceService {
                Space.ACTIVE_STATUS);
       }
       
-      saveSpace(space, false);
+      
     } catch (Exception e) {
       LOG.warn("Failed to init apps", e);
-    } finally {
-      SpaceUtils.endSyn(true);
     }
-
     
-    
+    saveSpace(space, true);
+    spaceLifeCycle.spaceCreated(space, creator);
     return space;
   }
 
@@ -495,6 +490,11 @@ public class SpaceServiceImpl implements SpaceService {
    */
   public void deleteSpace(Space space) {
     try {
+      Identity spaceIdentity = identityStorage.findIdentity(SpaceIdentityProvider.NAME, space.getPrettyName());
+
+      if (spaceIdentity != null) {
+        identityStorage.hardDeleteIdentity(spaceIdentity);
+      }
       
       // remove memberships of users with deleted space.
       SpaceUtils.removeMembershipFromGroup(space);
@@ -583,6 +583,10 @@ public class SpaceServiceImpl implements SpaceService {
    * {@inheritDoc}
    */
   public void removeMember(Space space, String userId) {
+    Identity spaceIdentity = identityStorage.findIdentity(SpaceIdentityProvider.NAME, space.getPrettyName());
+    if (spaceIdentity.isDeleted()) {
+      return;
+    }
     String[] members = space.getMembers();
     if (ArrayUtils.contains(members, userId)) {
       members = (String[]) ArrayUtils.removeElement(members, userId);

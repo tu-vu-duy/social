@@ -75,6 +75,7 @@ import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.relationship.model.Relationship.Type;
 import org.exoplatform.social.core.service.LinkProvider;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.ActivityStorageException;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
@@ -370,6 +371,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       comment.setPostedTime(activityEntity.getPostedTime());
       comment.setUpdated(getLastUpdatedTime(activityEntity));
       comment.isComment(activityEntity.isComment());
+      comment.setType(activityEntity.getType());
       //
       String posterId =  activityEntity.getPosterIdentity().getId();
       comment.setUserId(posterId);
@@ -674,7 +676,10 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       if (mustInjectStreams) {
         Identity identity = identityStorage.findIdentityById(comment.getUserId());
         StreamInvocationHelper.updateCommenter(identity, activityEntity, commenters.toArray(new String[0]), oldUpdated);
-        StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]), oldUpdated);
+        //only update what's hot when add comment the current day after the last updated of activity
+        if (StorageUtils.afterDayOrMore(oldUpdated, currentMillis)) {
+          StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]), oldUpdated);
+        }
       }
     }  
     catch (NodeNotFoundException e) {
@@ -732,7 +737,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
           StreamInvocationHelper.savePoster(owner, entity);
           //run asynchronous: JCR session doesn't share in multi threading, in Stream service.
           
-          StreamInvocationHelper.save(owner, activity, mentioners.toArray(new String[0]));
+          StreamInvocationHelper.save(owner, entity, mentioners.toArray(new String[0]));
         }
       }
       else {
@@ -1561,7 +1566,13 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
   public int getNumberOfComments(ExoSocialActivity existingActivity) {
     //return getStorage().getActivity(existingActivity.getId()).getReplyToId().length;
     //
-    List<String> commentIds = Arrays.asList(getStorage().getActivity(existingActivity.getId()).getReplyToId());
+    //Need to check if the activity is not deleted by another session
+    ExoSocialActivity got  = getStorage().getActivity(existingActivity.getId());
+    if (got == null) {
+      LOG.warn("Probably was deleted activity by another session");
+      return 0;
+    }
+    List<String> commentIds = Arrays.asList(got.getReplyToId());
     int size = commentIds.size();
 
     //
@@ -2512,32 +2523,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
                                                Identity viewer,
                                                long offset,
                                                long limit) throws ActivityStorageException {
-    List<ExoSocialActivity> got = new ArrayList<ExoSocialActivity>();
-    StringBuilder query = new StringBuilder().append("SELECT * FROM soc:activity WHERE ").append(getQueryViewerActivityStream(owner, viewer));
-    query.append(" ORDER BY ").append(ActivityEntity.lastUpdated.getName()).append(" DESC");
-    query.append(", ").append(ActivityEntity.postedTime.getName()).append(" DESC");
-    
-    NodeIterator it = nodes(query.toString());
-    while (it.hasNext() && limit > 0) {
-      if (offset > 0) {
-        offset--;
-        continue;
-      }
-      Node node = (Node) it.next();
-      try {
-        ActivityEntity entity = _findById(ActivityEntity.class, node.getUUID());
-        if (! entity.getIdentity().getProviderId().equals(SpaceIdentityProvider.NAME)) {
-          got.add(getActivity(entity.getId()));
-          limit--;
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to get activities posted by owner and viewer");
-      }
-      
-    }
-
-    //
-    return got;
+    return this.streamStorage.getViewerActivities(owner, (int)offset, (int)limit);
   }
   
   @Override

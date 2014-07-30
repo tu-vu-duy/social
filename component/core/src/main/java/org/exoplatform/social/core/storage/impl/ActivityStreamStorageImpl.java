@@ -119,7 +119,13 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
       Identity owner = streamCtx.getIdentity();
       //It has been invoked by Activity Service with the multi-threading.
       //so that, gets Entity from JCR, prevent Session.logout exception.
-      ActivityEntity activityEntity = _findById(ActivityEntity.class, streamCtx.getActivity().getId());
+      ActivityEntity activityEntity = null;
+      try {
+        activityEntity = _findById(ActivityEntity.class, streamCtx.getActivityEntity().getId());
+      } catch (Exception e) {
+        activityEntity = streamCtx.getActivityEntity();
+      }
+      
       if (OrganizationIdentityProvider.NAME.equals(owner.getProviderId())) {
         user(owner, activityEntity);
         //mention case
@@ -149,6 +155,11 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
       ActivityEntity activityEntity = streamCtx.getActivityEntity();
       if (OrganizationIdentityProvider.NAME.equals(owner.getProviderId())) {
         createOwnerRefs(owner, activityEntity);
+        IdentityEntity poster = activityEntity.getPosterIdentity();
+        if (!poster.getName().equals(owner.getRemoteId())) {
+          addRefList(poster, activityEntity, ActivityRefType.MY_ACTIVITIES, false);
+        }
+        
       } else if (SpaceIdentityProvider.NAME.equals(owner.getProviderId())) {
         //
         manageRefList(new UpdateContext(owner, null), activityEntity, ActivityRefType.SPACE_STREAM);
@@ -504,6 +515,11 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
   public int getNumberOfMyActivities(Identity owner) {
     return getNumberOfActivities(ActivityRefType.MY_ACTIVITIES, owner);
   }
+  
+  @Override
+  public List<ExoSocialActivity> getViewerActivities(Identity owner, int offset, int limit) {
+    return getOwnerActivitiesNotQuery(ActivityRefType.MY_ACTIVITIES, owner, offset, limit);
+  }
 
   @Override
   public void connect(Identity sender, Identity receiver) {
@@ -724,6 +740,49 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
         ExoSocialActivity a = getStorage().getActivity(current.getActivityEntity().getId());
         if (!got.contains(a)) {
           if (!a.isHidden()) {
+            got.add(a);
+            if (++nb == limit) {
+              break;
+            }
+          }
+        } else {
+          //remove if we have duplicate activity on stream.
+          //some of cases on PLF 3.5.x migration has duplicated Activity
+          current.getDay().getActivityRefs().remove(current.getName());
+        }
+        
+        
+      }
+    } catch (NodeNotFoundException e) {
+      LOG.warn("Failed to activities!");
+    }
+    return got;
+  }
+  
+  private List<ExoSocialActivity> getOwnerActivitiesNotQuery(ActivityRefType type, Identity owner, int offset, int limit) {
+    List<ExoSocialActivity> got = new LinkedList<ExoSocialActivity>();
+    try {
+      IdentityEntity identityEntity = identityStorage._findIdentityEntity(owner.getProviderId(), owner.getRemoteId());
+      
+      ActivityRefListEntity refList = type.refsOf(identityEntity);
+      ActivityRefList list = new ActivityRefList(refList);
+
+      int nb = 0;
+      ActivityRefIterator it = list.iterator();
+      _skip(it, offset);
+      while (it.hasNext()) {
+        ActivityRef current = it.next();
+        // take care in the case, current.getActivityEntity() = null the same
+        // SpaceRef, need to remove it out
+        if (current.getActivityEntity() == null) {
+          current.getDay().getActivityRefs().remove(current.getName());
+          continue;
+        }
+
+        ExoSocialActivity a = getStorage().getActivity(current.getActivityEntity().getId());
+        if (!got.contains(a)) {
+          //only take these user's activities and ower is poster
+          if (!a.isHidden() && a.getStreamOwner().equals(owner.getRemoteId())) {
             got.add(a);
             if (++nb == limit) {
               break;

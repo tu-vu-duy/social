@@ -17,14 +17,13 @@
 package org.exoplatform.social.webui.activity;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.common.RealtimeListAccess;
@@ -225,6 +224,9 @@ public class BaseUIActivity extends UIForm {
    */
   public List<ExoSocialActivity> getComments() {
     int commentsSize = activityCommentsListAccess.getSize();
+    if (commentsSize == 0)
+      return new ArrayList<ExoSocialActivity>();
+    //
     List<ExoSocialActivity> comments = new ArrayList<ExoSocialActivity>();
     if (commentListStatus == CommentStatus.ALL) {
       if (currentLoadIndex == 0) {
@@ -250,11 +252,21 @@ public class BaseUIActivity extends UIForm {
     return getI18N(comments);
   }
 
+  /**
+   * Don't use this method what you want to get the comments's size.
+   * You could use the new method for this stuff: getAllCommentSize() method
+   * 
+   * @return
+   */
   @Deprecated
   public List<ExoSocialActivity> getAllComments() {
     return activityCommentsListAccess.loadAsList(0, activityCommentsListAccess.getSize());
   }
 
+  /**
+   * Gets number of comments of the specified activity
+   * @return
+   */
   public int getAllCommentSize() {
     return activityCommentsListAccess.getSize();
   }
@@ -269,10 +281,7 @@ public class BaseUIActivity extends UIForm {
    * @throws Exception
    */
   public String[] getDisplayedIdentityLikes() throws Exception {
-    List<String> likes = Arrays.asList(identityLikes);
-    Collections.reverse(likes);
-    identityLikes = (String[])likes.toArray();
-    
+    ArrayUtils.reverse(identityLikes);
     return identityLikes;
   }
 
@@ -597,10 +606,21 @@ public class BaseUIActivity extends UIForm {
     
     // If an activity of space then set creator information
     if ( SpaceIdentityProvider.NAME.equals(ownerIdentity.getProviderId()) ) {
+      String spaceCreator = activity.getTemplateParams().get(Space.CREATOR);
+      
+      if (spaceCreator != null) {
+        return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, spaceCreator, false);  
+      }
+      
       SpaceService spaceService = getApplicationComponent(SpaceService.class);
       Space space = spaceService.getSpaceByPrettyName(ownerIdentity.getRemoteId()); 
-      String[] managers = space.getManagers();
-      return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME,managers[0], false);
+      
+      if (space == null) {
+        return ownerIdentity;
+      } else {
+        String[] managers = space.getManagers();
+        return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME,managers[0], false);
+      }
     }
     
     return null;
@@ -654,7 +674,7 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       WebuiRequestContext requestContext = event.getRequestContext();
       String isLikedStr = requestContext.getRequestParameter(OBJECTID);
       uiActivity.setLike(Boolean.parseBoolean(isLikedStr));
@@ -677,7 +697,7 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       String status = event.getRequestContext().getRequestParameter(OBJECTID);
       CommentStatus commentListStatus = null;
       if (status.equals(CommentStatus.LATEST.getStatus())) {
@@ -732,7 +752,7 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       WebuiRequestContext requestContext = event.getRequestContext();
       UIFormTextAreaInput uiFormComment = uiActivity.getChild(UIFormTextAreaInput.class);
       String message = uiFormComment.getValue();
@@ -796,7 +816,7 @@ public class BaseUIActivity extends UIForm {
       WebuiRequestContext requestContext = event.getRequestContext();
       Utils.getActivityManager().deleteComment(uiActivity.getActivity().getId(),
                                                requestContext.getRequestParameter(OBJECTID));
-      uiActivity.refresh();
+      //uiActivity.refresh();
       requestContext.addUIComponentToUpdateByAjax(uiActivity);
       
       Utils.initUserProfilePopup(uiActivity.getId());
@@ -824,6 +844,10 @@ public class BaseUIActivity extends UIForm {
       return true;
     }
     return false;
+  }
+  
+  public boolean isDeletedSpace(String streamOwner) {
+    return CommonsUtils.getService(SpaceService.class).getSpaceByPrettyName(streamOwner) == null;
   }
   
   /**

@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.exoplatform.commons.utils.ListAccess;
+import org.exoplatform.services.organization.User;
+import org.exoplatform.services.organization.UserHandler;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
 import org.exoplatform.social.core.identity.model.Identity;
@@ -27,7 +29,9 @@ import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.Application;
 import org.exoplatform.social.core.identity.provider.FakeIdentityProvider;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
+import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.profile.ProfileFilter;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
@@ -49,12 +53,13 @@ public class IdentityManagerTest extends AbstractCoreTest {
 
   private IdentityManager identityManager;
 
-  
+  private List<Space> tearDownSpaceList;
   private List<Identity>  tearDownIdentityList;
 
   private ActivityManager activityManager;
   private SpaceService spaceService;
-
+  private UserHandler userHandler;
+  
   public void setUp() throws Exception {
     super.setUp();
     identityManager = (IdentityManager) getContainer().getComponentInstanceOfType(IdentityManager.class);
@@ -66,12 +71,22 @@ public class IdentityManagerTest extends AbstractCoreTest {
     activityManager = (ActivityManager) getContainer().getComponentInstanceOfType(ActivityManager.class);
     assertNotNull(activityManager);
 
+    userHandler = SpaceUtils.getOrganizationService().getUserHandler();
+    
     tearDownIdentityList = new ArrayList<Identity>();
+    tearDownSpaceList = new ArrayList<Space>();
   }
 
   public void tearDown() throws Exception {
     for (Identity identity : tearDownIdentityList) {
       identityManager.deleteIdentity(identity);
+    }
+    for (Space space : tearDownSpaceList) {
+      Identity spaceIdentity = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, space.getPrettyName(), false);
+      if (spaceIdentity != null) {
+        identityManager.deleteIdentity(spaceIdentity);
+      }
+      spaceService.deleteSpace(space);
     }
     super.tearDown();
   }
@@ -226,7 +241,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
     }
     
     //clear space
-    spaceService.deleteSpace(savedSpace);
+    tearDownSpaceList.add(savedSpace);
 
   }
 
@@ -581,6 +596,54 @@ public class IdentityManagerTest extends AbstractCoreTest {
       assertEquals(3, identityArray.length);
     }
   }
+  
+  /**
+   * Test order {@link IdentityManager#getIdentitiesByProfileFilter(String, ProfileFilter, boolean)}
+   */
+  public void testOrderOfGetIdentitiesByProfileFilter() throws Exception {
+    // Create new users 
+    String providerId = "organization";
+    String[] FirstNameList = {"John","Bob","Alain"};
+    String[] LastNameList = {"Smith","Dupond","Dupond"};
+    for (int i = 0; i < 3; i++) {
+      String remoteId = "username" + i;
+      Identity identity = new Identity(providerId, remoteId);
+      identityManager.saveIdentity(identity);
+      Profile profile = new Profile(identity);
+      profile.setProperty(Profile.FIRST_NAME, FirstNameList[i]);
+      profile.setProperty(Profile.LAST_NAME, LastNameList[i]);
+      profile.setProperty(Profile.FULL_NAME, FirstNameList[i] + " " +  LastNameList[i]);
+      profile.setProperty(Profile.POSITION, "developer");
+      profile.setProperty(Profile.GENDER, "male");
+
+      identityManager.saveProfile(profile);
+      identity.setProfile(profile);
+      tearDownIdentityList.add(identity);   
+    }
+    
+    ProfileFilter pf = new ProfileFilter();
+    ListAccess<Identity> idsListAccess = null;
+    // Test order by last name
+    pf.setFirstCharacterOfName('D');
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertNotNull(idsListAccess);
+    assertEquals(2, idsListAccess.getSize());
+    assertEquals("Alain Dupond", idsListAccess.load(0, 20)[0].getProfile().getFullName());
+    assertEquals("Bob Dupond", idsListAccess.load(0, 20)[1].getProfile().getFullName());
+    
+    pf = new ProfileFilter();
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertNotNull(idsListAccess);
+    assertEquals(3, idsListAccess.getSize());
+    assertEquals("Alain Dupond", idsListAccess.load(0, 20)[0].getProfile().getFullName());
+    assertEquals("Bob Dupond", idsListAccess.load(0, 20)[1].getProfile().getFullName());
+    assertEquals("John Smith", idsListAccess.load(0, 20)[2].getProfile().getFullName());
+    
+    // Test order by first name if last name is equal
+    Identity[] identityArray = idsListAccess.load(0, 2);
+    assertEquals(tearDownIdentityList.get(2).getId(), identityArray[0].getId());
+    
+  }
 
   /**
    * Test {@link IdentityManager#updateIdentity(Identity}
@@ -883,5 +946,65 @@ public class IdentityManagerTest extends AbstractCoreTest {
 
     List<ExoSocialActivity> johnActivityList = activityManager.getActivities(gotJohnIdentity, 0, 10);
     assertEquals("johnActivityList.size() must be 1", 1, johnActivityList.size());
+  }
+  
+  public void testGetIdentitiesByName() throws Exception {
+    User user = userHandler.createUserInstance("alex");
+    user.setFirstName("");
+    user.setLastName("");
+    user.setEmail("");
+    userHandler.createUser(user, true);
+    User found = userHandler.findUserByName("alex");
+    assertNotNull(found);
+    String providerId = OrganizationIdentityProvider.NAME;
+    
+    Identity identity = new Identity(providerId, "alex");
+    identityManager.saveIdentity(identity);
+    Profile profile = new Profile(identity);
+    profile.setProperty(Profile.USERNAME, "alex");
+    profile.setProperty(Profile.FIRST_NAME, "Mary");
+    profile.setProperty(Profile.LAST_NAME, "Williams");
+    profile.setProperty(Profile.FULL_NAME, "Mary " + "Williams");
+    profile.setProperty(Profile.POSITION, "developer");
+    profile.setProperty(Profile.GENDER, "female");
+    identityManager.saveProfile(profile);
+    identity.setProfile(profile);
+    tearDownIdentityList.add(identity);
+    
+    
+    ProfileFilter pf = new ProfileFilter();
+    
+    //Search by name full name
+    pf.setName("Mary");
+    ListAccess<Identity> idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    pf.setName("Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    pf.setName("Mary Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    
+    //update profile name
+    profile.setProperty(Profile.FIRST_NAME, "Mary-James");
+    profile.setProperty(Profile.FULL_NAME, "Mary-James Williams");
+    identityManager.updateProfile(profile);
+    Identity alex = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "alex", true);
+    assertEquals("Mary-James Williams", alex.getProfile().getFullName());
+    
+    pf.setName("Mary-James Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    
+    //
+    List<ExoSocialActivity> activities = activityManager.getActivitiesWithListAccess(identity).loadAsList(0, 20);
+    for (ExoSocialActivity act : activities) {
+      List<ExoSocialActivity> comments = activityManager.getCommentsWithListAccess(act).loadAsList(0, 20);
+      for (ExoSocialActivity cmt : comments) {
+        activityManager.deleteComment(act, cmt);
+      }
+      activityManager.deleteActivity(act);
+    }
+    userHandler.removeUser(user.getUserName(), false);
   }
 }

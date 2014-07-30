@@ -263,7 +263,7 @@ public class CachedIdentityStorageTestCase extends AbstractCoreTest {
 
   }
 
-  @MaxQueryNumber(69)
+  @MaxQueryNumber(84)
   public void testGetIdentitiesByFirstCharacterOfName() throws Exception {
 
     assertEquals(0, cacheService.getIdentityCache().getCacheSize());

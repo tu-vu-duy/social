@@ -17,7 +17,10 @@
 package org.exoplatform.social.portlet;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import org.exoplatform.commons.utils.CommonsUtils;
+import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
@@ -53,7 +56,11 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
   private boolean composerDisplayed = false;
   UIUserActivitiesDisplay uiUserActivitiesDisplay;
   private String activityId;
-  static private final String SINGLE_ACTIVITY_NODE = "activity";
+  private static final String SINGLE_ACTIVITY_NODE = "activity";
+  private static final String SINGLE_ACTIVITY_REDIRECT_LINK_PREFIX = "activity/redirect";
+  private static final String NOTIFICATION_REST_PREFIX = "/social/notifications/redirectUrl";
+  private static final String DOMAIN_PROPERTY_KEY="gatein.email.domain.url";
+  private static final String DEFAULT_DOMAIN = "http://localhost:8080";
   /**
    * constructor
    *
@@ -110,6 +117,7 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
    * @throws Exception
    */
   public void refresh() throws Exception {
+    redirectActivity();
     viewerName = Utils.getViewerRemoteId();
     ownerName = Utils.getOwnerRemoteId();
     if (viewerName.equals(ownerName)) {
@@ -148,6 +156,27 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
    */
   public boolean isSingleActivity() {
     return SINGLE_ACTIVITY_NODE.equals(Utils.getSelectedNode());
+  }
+  
+  /**
+   * Redirects to activity page viewer (single page) if user has been logged in successfully.
+   * Resolves problem query params are removing by portal in case of logging in is required. (SOC-3832).
+   * 
+   * @throws Exception 
+   */
+  public void redirectActivity() throws Exception {
+    String path = Utils.getSelectedNode();
+    if (path.contains(SINGLE_ACTIVITY_REDIRECT_LINK_PREFIX)) {
+      PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
+      HttpServletResponse response = portalRequestContext.getResponse();
+      String domain = System.getProperty(DOMAIN_PROPERTY_KEY, DEFAULT_DOMAIN);
+      ExoContainerContext context = CommonsUtils.getService(ExoContainerContext.class);
+      String link = new StringBuffer(domain).append("/").append(context.getRestContextName())
+                                            .append(NOTIFICATION_REST_PREFIX)
+                                            .append(path.replace(SINGLE_ACTIVITY_REDIRECT_LINK_PREFIX, ""))
+                                            .toString();
+      response.sendRedirect(link);
+    }
   }
   
   /**

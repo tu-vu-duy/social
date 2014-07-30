@@ -16,11 +16,6 @@
  */
 package org.exoplatform.social.webui.activity;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.log.ExoLogger;
@@ -43,10 +38,16 @@ import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/activity/UIActivitiesLoader.gtmpl",
+  template = "war:/groovy/social/webui/activity/UIActivitiesLoader.gtmpl",
   events = {
-    @EventConfig(listeners = UIActivitiesLoader.LoadMoreActionListener.class)
+    @EventConfig(listeners = UIActivitiesLoader.LoadMoreActionListener.class),
+    @EventConfig(listeners = UIActivitiesLoader.RefreshStreamActionListener.class)
   }
 )
 
@@ -72,7 +73,6 @@ public class UIActivitiesLoader extends UIContainer {
   private int loadingCapacity;
   private int pageSize;
   private Space space;
-  private int activitiesCounter;
   
   public UIActivitiesLoader() {
     try {
@@ -160,7 +160,6 @@ public class UIActivitiesLoader extends UIContainer {
     try {
       hasMore = false;
       currentLoadIndex = 0;
-      activitiesCounter = 0;
       isExtendLoader = false;
       
       String activityId = Utils.getActivityID();
@@ -210,16 +209,7 @@ public class UIActivitiesLoader extends UIContainer {
     lastActivitiesContainer.setSpace(space);
     
     lastActivitiesLoader.setActivities(activities);
-    if (activityListAccess != null) {
-      if (activities.size() < this.pageSize) {
-        lastActivitiesLoader.setHasMore(false);
-        this.setHasMore(false);
-      } else if (activities.size() == this.pageSize) {
-        boolean hasMore = activityListAccess.getSize() > activitiesCounter;
-        lastActivitiesLoader.setHasMore(hasMore);
-        this.setHasMore(hasMore);
-      }
-    }
+    lastActivitiesLoader.setHasMore(isHasMore());
   }
 
   private void setActivities(List<ExoSocialActivity> activities) throws Exception {
@@ -228,12 +218,14 @@ public class UIActivitiesLoader extends UIContainer {
 
   private List<ExoSocialActivity> loadActivities(int index, int length) throws Exception {
     if (activityListAccess != null) {
-      ExoSocialActivity[] activities = activityListAccess.load(index, length);
+      int newLength = length + 1;
+      ExoSocialActivity[] activities = activityListAccess.load(index, newLength);
       if (activities != null) {
-        activitiesCounter += activities.length;
-        setHasMore(activityListAccess.getSize() > activitiesCounter);
-
-        return new ArrayList<ExoSocialActivity>(Arrays.asList(activities));
+        int size = activities.length;
+        boolean hasMore = size > length;
+        setHasMore(hasMore);
+        
+        return hasMore ? new ArrayList<ExoSocialActivity>(Arrays.asList(activities)).subList(0, length) : new ArrayList<ExoSocialActivity>(Arrays.asList(activities)) ;
       }
     }
     return null;
@@ -285,6 +277,15 @@ public class UIActivitiesLoader extends UIContainer {
       require.addScripts("activitiesLoader.setStatus('" + uiActivitiesLoader.isHasMore() + "');");
       
       Utils.resizeHomePage();
+    }
+  }
+
+  public static class RefreshStreamActionListener extends EventListener<UIActivitiesLoader> {
+    public void execute(Event<UIActivitiesLoader> event) throws Exception {
+        UIActivitiesLoader uiActivities = event.getSource();
+        uiActivities.init();
+        event.getRequestContext().addUIComponentToUpdateByAjax(uiActivities);
+        Utils.resizeHomePage();
     }
   }
 }
