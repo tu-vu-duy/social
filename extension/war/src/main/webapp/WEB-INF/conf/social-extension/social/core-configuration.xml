@@ -88,7 +88,7 @@
   <!--
     Activity storage components.
   -->
-  <component>
+  <!-- <component>
     <key>org.exoplatform.social.core.storage.api.ActivityStorage</key>
     <type>org.exoplatform.social.core.storage.cache.CachedActivityStorage</type>
   </component>
@@ -97,7 +97,7 @@
     <key>org.exoplatform.social.core.storage.impl.ActivityStorageImpl</key>
     <type>org.exoplatform.social.core.storage.synchronization.SynchronizedActivityStorage</type>
   </component>
-
+ -->
   <!--
     Identity storage components.
   -->
@@ -143,6 +143,7 @@
     <type>org.exoplatform.social.core.service.LinkProvider</type>
   </component>
   -->
+  <!-- 
   <component>
     <key>org.exoplatform.social.core.manager.ActivityManager</key>
     <type>org.exoplatform.social.core.manager.ActivityManagerImpl</type>
@@ -161,7 +162,12 @@
       </component-plugin>
     </component-plugins>
   </component>
-
+  -->
+  <component>
+    <key>org.exoplatform.social.core.manager.ActivityManager</key>
+    <type>org.exoplatform.social.core.mongo.manager.ActivityMongoManagerImpl</type>
+  </component>
+  
   <component>
     <key>org.exoplatform.social.core.identity.model.PropertiesDefinition</key>
     <type>org.exoplatform.social.core.identity.model.PropertiesDefinition</type>
