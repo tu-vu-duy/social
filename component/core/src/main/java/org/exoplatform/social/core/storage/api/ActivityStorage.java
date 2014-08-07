@@ -1050,4 +1050,12 @@ public interface ActivityStorage {
    * @since 4.0
    */
   public int getNumberOfOlderComments(ExoSocialActivity existingActivity, Long sinceTime);
+  
+  /**
+   * Load a comment by it id.
+   *
+   * @param commentId the id of the comment. An UUID.
+   * @return the comment
+   */
+  public ExoSocialActivity getComment(String commentId) throws ActivityStorageException;
 }

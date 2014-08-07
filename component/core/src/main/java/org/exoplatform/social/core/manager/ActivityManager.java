@@ -476,4 +476,13 @@ public interface ActivityManager {
    */
   @Deprecated
   void processActivitiy(ExoSocialActivity activity);
+  
+  /**
+   * Gets a comment by its Id.
+   *
+   * @param commentId Id of the comment.
+   * @return The comment.
+   * @LevelAPI Platform
+   */
+  ExoSocialActivity getComment(String commentId);
 }

@@ -490,4 +490,10 @@ public class ActivityManagerImpl implements ActivityManager {
     return identityManager.getIdentity(newActivity.getUserId(), false);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  public ExoSocialActivity getComment(String commentId) {
+    return activityStorage.getComment(commentId);
+  }
 }
