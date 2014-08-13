@@ -1,15 +1,14 @@
 package org.exoplatform.social.extras.injection;
 
-import org.exoplatform.container.xml.InitParams;
+import java.util.HashMap;
+
+import org.exoplatform.social.common.RealtimeListAccess;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
-import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.extras.injection.utils.LoremIpsum4J;
-
-import java.util.HashMap;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
@@ -77,6 +76,7 @@ public class ActivityInjector extends AbstractSocialInjector {
       }
       
       Identity identity = identityManager.getOrCreateIdentity(provider, fromUser, false);
+      RealtimeListAccess<ExoSocialActivity> listAccess = activityManager.getActivityFeedWithListAccess(identity);
 
       for (int j = 0; j < number; ++j) {
         //
@@ -84,9 +84,10 @@ public class ActivityInjector extends AbstractSocialInjector {
         lorem = new LoremIpsum4J();
         activity.setBody(lorem.getWords(10));
         activity.setTitle(lorem.getParagraphs());
-        activityManager.saveActivity(identity, "DEFAULT_ACTIVITY", activity.getTitle());        //
+        activityManager.saveActivity(identity, "DEFAULT_ACTIVITY", activity.getTitle()); //
         getLog().info("Activity for " + fromUser + " generated");
-
+        getLog().info("Loading 20 activities .....");
+        listAccess.load(0, 20);
       }
     }
 
