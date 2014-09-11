@@ -204,8 +204,10 @@
       if (relationshipInfo.length > 0) {
         //
         identityBox.find('span.statusLabel:first').text(relationshipInfo.data('status'));
-        identityBox.find('button.actionLabel:first').attr('onclick', relationshipInfo.data('action'));
-        identityBox.find('button.actionLabel:first').text(relationshipInfo.text());
+        var actionLabel = identityBox.find('button.actionLabel:first');
+        actionLabel.attr('onclick', relationshipInfo.data('action'));
+        actionLabel.attr('class', 'btn ' + relationshipInfo.data('bt-class') + ' pull-right actionLabel');
+        actionLabel.text(relationshipInfo.text());
         var clazz = relationshipInfo.data('class');
         if(clazz.length > 0) {
           identityBox.addClass(clazz);
@@ -213,6 +215,8 @@
           identityBox.removeClass('checkedBox');
         }
       }
+      //data-bt-class
+      
       identityBox.find('button.btn-confirm:first').hide();
     },
     addOnResizeWidth : function(callback) {
@@ -232,6 +236,22 @@
       $.each(dynamicItems, function( index, comId ) {
         SocialUtils.dynamicItemLayout(comId);
       });
+    },
+    limitTextLine : function(item) {
+      if(item.length > 0) {
+        var text = item.text();
+        if(item.attr('data-text') == null) {
+          item.attr('data-text', text);
+        } else {
+          text = item.attr('data-text');
+          item.text(text);
+        }
+        var t = text.length, k = item.attr('data-line');
+        while(item.height()*1 > parseInt(item.css('line-height'))*k) {
+          item.text(text.substring(0, t - 4) + '...');
+          --t;
+        }
+      }
     },
     dynamicItemLayout : function(comId) {
       var container = $('#'+comId);
@@ -264,6 +284,8 @@
         } else {
           $(this).width(parseInt(width + d)).find('.spaceBox:first').css({'margin-right': '10px'});
         }
+        //
+        SocialUtils.limitTextLine($(this).find('a.limitText:first'));
       });
       //
       var moreButton = container.find('.load-more-items:first');

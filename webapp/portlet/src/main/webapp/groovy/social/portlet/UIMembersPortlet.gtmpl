@@ -81,7 +81,7 @@
             <div class="contentBox">
               <h4 class="spaceTitle"><a href="${profileURL}" class="CommunityName InviteTitle">$userName</a></h4>
               <% if(position.length() > 0) { %>
-               <div class="position">
+               <div class="position ellipsis">
                    <%=_ctx.appRes(uicomponent.getId() + ".label.Position") + ": "%>${position}
                </div>
               <% } %>
@@ -177,7 +177,7 @@
                     <a href="${profileURL}">$memberUserName</a>
                 </h4>
                 <% if(position.length() > 0) { %>
-                 <div class="position">
+                 <div class="position ellipsis">
                      <%=_ctx.appRes(uicomponent.getId() + ".label.Position") + ": "%>${position}
                  </div>
                  <% } %>

@@ -152,13 +152,13 @@
 		      <div class="contentBox">
             <h4 class="spaceTitle"><a href="${profileURL}">${fullName}</a></h4>			
 	            <% if(position.length() > 0) { %>
-	            <div class="position">
+	            <div class="position ellipsis">
 	              ${position}
 	            </div>
 	            <%  } %>
 	            <% if(email.length() > 0) { %>
 	            <div class="email">
-	              <a href="mailto:${email}">${email}</a>
+	              <a class="ellipsis" href="mailto:${email}">${email}</a>
 	            </div>
 	            <%  } %>
 		      </div>
