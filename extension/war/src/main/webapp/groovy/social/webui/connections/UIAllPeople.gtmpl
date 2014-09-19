@@ -63,10 +63,11 @@ String receivedInvitationsURL = "${portalURI}${selectedNode}/receivedInvitations
 String sentInvitationURL = "${portalURI}${selectedNode}/pendingRequests/${ownerId}";
 
 String selectedStartChar = uicomponent.getSelectedChar();
+String lastId = "";
 //
 _ctx.getRequestContext().getJavascriptManager()
-	.require("SHARED/jquery", "jq") .require("SHARED/bts_tooltip")
-	.addScripts("jq('*[rel=\"tooltip\"]').tooltip();");
+	.require("SHARED/jquery", "jq") .require("SHARED/bts_tooltip").require("SHARED/socialUtil", "socialUtil")
+	.addScripts("jq('*[rel=\"tooltip\"]').tooltip();socialUtil.focusLastMore('" + uicomponent.id + "');");
 %>
 <div class="uiAllPeople" id="$uicomponent.id">
 	<% uicomponent.renderChild(UIProfileUserSearch.class); %>
@@ -140,6 +141,7 @@ _ctx.getRequestContext().getJavascriptManager()
 						if (contactStatus == Relationship.Type.CONFIRMED) {
 							checkbox = "checkedBox";
 						}
+						lastId = identity.getId();
 				%>
 				<div class="itemContainer pull-left">
 					<div class="$checkbox spaceBox" id="identity${identity.getId()}">
@@ -191,19 +193,11 @@ _ctx.getRequestContext().getJavascriptManager()
 				</div>
 				<% } %>
 				</div>
+				<a class="last-id" id="lastId$lastId"></a>
 				<% if(uicomponent.isEnableLoadNext()) { %>
 				<button id="LoadMoreButton" class="load-more-items btn" onclick="<%=uicomponent.event("LoadMorePeople")%>" >
 					<%=_ctx.appRes("UIAllPeople.label.ShowMore")%>
 				</button>
-				<% } else { %>
-				<script type="text/javascript">
-					var loadMoreButton = document.getElementById("LoadMoreButton");
-					if (loadMoreButton) {
-						try {
-							loadMoreButton.style.display = "none";
-						}catch(e){};
-						}						
-				</script>
 				<% } %>
 			</div>
 		</div>

@@ -310,17 +310,18 @@
       }
       //
       var delta = (widthContainer - (width * maxItemInline))/maxItemInline;
-      width += delta;
-      //
-      var d = (listBoxs.length > 3) ? 10/maxItemInline : 1.5;
-      listBoxs.each(function(index) {
-        if((index + 1) % maxItemInline === 0) {
-          $(this).width(parseInt(width + d - 10)).find('.spaceBox:first').css({'margin-right': '0px'});
-        } else {
-          $(this).width(parseInt(width + d)).find('.spaceBox:first').css({'margin-right': '10px'});
-        }
-      });
       
+      var percent = ((width + delta - maxItemInline*0.5)/widthContainer) * 100;
+      //
+      var style= $('#dynamic-style');
+      if(style.length === 0) {
+      style= $('<style type="text/css" id="dynamic-style"></style>');
+      $('head').append(style);
+    }
+      style.html(
+    '.uiSocApplication .itemList .itemContainer {width:' + percent + '%;}'
+      );
+      //
       var execute = $('#execute');
       if(execute.length === 0) {
         execute = $('<div id="execute" style="display:none"></div>');
@@ -344,6 +345,22 @@
       var moreButton = container.find('.load-more-items:first');
       if(moreButton.length > 0) {
         moreButton.css({'width' : (width*2 + d) + 'px', 'margin' : 'auto', 'display':'block'})
+                  .on('mousedown', function(evt) {
+                    SocialUtils.setCookies('last-id', container.find('.last-id:first').attr('id'), 1);
+                    console.log(container.find('.last-id:first').attr('id'));
+                  });
+      }
+    },
+    focusLastMore : function(comId) {
+      var lastId = eXo.core.Browser.getCookie('last-id');
+      if (lastId && lastId.length > 0) {
+        var id = lastId.replace('lastId', 'identity');
+        var lastItem = $('#' + comId).find('#' + id);
+        if (lastItem.length > 0) {
+      var next = lastItem.parents('.itemContainer:first').next();
+          next[0].scrollIntoView(true);
+          SocialUtils.setCookies('last-id', '', -1);
+        }
       }
     },
     addfillUpFreeSpace : function(comId) {
