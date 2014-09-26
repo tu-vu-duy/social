@@ -12,6 +12,12 @@
   <name>eXo Social Injectors</name>
   <description>eXo Social Injectors</description>
   <dependencies>
+  
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.0</version>
+    </dependency>
     <dependency>
       <groupId>org.chromattic</groupId>
       <artifactId>chromattic.api</artifactId>
