@@ -17,6 +17,7 @@
 package org.exoplatform.social.webui;
 
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -31,21 +32,26 @@ import org.exoplatform.commons.utils.ExpressionUtil;
 import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
+import org.exoplatform.container.PortalContainer;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.application.RequestNavigationData;
+import org.exoplatform.portal.config.UserACL;
 import org.exoplatform.portal.config.UserPortalConfigService;
-import org.exoplatform.portal.mop.SiteType;
 import org.exoplatform.portal.mop.Described;
+import org.exoplatform.portal.mop.SiteType;
+import org.exoplatform.portal.mop.description.DescriptionService;
 import org.exoplatform.portal.mop.user.UserNavigation;
 import org.exoplatform.portal.mop.user.UserNode;
-import org.exoplatform.portal.mop.description.DescriptionService;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.common.router.ExoRouter;
 import org.exoplatform.social.common.router.ExoRouter.Route;
+import org.exoplatform.social.common.utils.GroupTree;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -53,6 +59,7 @@ import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
 import org.exoplatform.social.core.relationship.model.Relationship;
+import org.exoplatform.social.core.space.GroupPrefs;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
@@ -821,5 +828,41 @@ public class Utils {
     }
     
     return null;
+  }
+
+  /**
+  * Check whether the user has permission to create space.
+  *
+  * @param userId
+  * @return
+  * @throws Exception
+  * @since 4.0.0
+  */
+  public static boolean hasCreateSpacePermission(String userId) throws Exception {
+    ExoContainer container = PortalContainer.getInstance();
+    UserACL userACL = (UserACL) container.getComponentInstanceOfType(UserACL.class);
+
+    if (userId.equals(userACL.getSuperUser()))
+      return true;
+
+    GroupPrefs groupPrefs = (GroupPrefs) container.getComponentInstanceOfType(GroupPrefs.class);
+
+    if (!groupPrefs.isOnRestricted())
+      return true;
+
+    OrganizationService organizationService = (OrganizationService) container.getComponentInstanceOfType(OrganizationService.class);
+
+    Collection<?> memberGroups = organizationService.getGroupHandler()
+                                                         .findGroupsOfUser(userId);
+    GroupTree restrictedTree = groupPrefs.getRestrictedGroups();
+
+    for (Object group : memberGroups) {
+      Group grp = (Group) group;
+
+      if (restrictedTree.hasNode(grp.getId()))
+        return true;
+    }
+
+    return false;
   }
 }
