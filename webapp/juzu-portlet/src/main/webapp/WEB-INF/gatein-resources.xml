@@ -11,6 +11,14 @@
     <css-path>/skin/css/notification.css</css-path>
     <css-priority>1</css-priority>
   </portlet-skin>
+  
+  <portlet-skin>
+    <application-name>social-juzu</application-name>
+    <portlet-name>SpaceManagementPortlet</portlet-name>
+    <skin-name>Default</skin-name>
+    <css-path>/skin/css/space-management.css</css-path>
+    <css-priority>1</css-priority>
+  </portlet-skin>
 
   <portlet>
     <name>NotificationSettingsPortlet</name>
@@ -20,6 +28,28 @@
       </script>
       <depends>
         <module>juzu-ajax</module>
+      </depends>
+      <depends>
+        <module>socialUtil</module>
+      </depends>
+      <depends>
+        <module>jquery</module>
+        <as>jq</as>
+      </depends>
+    </module>
+  </portlet>
+  
+  <portlet>
+    <name>SpaceManagementPortlet</name>
+    <module>
+      <script>
+        <path>/js/space-management/spacemanagement.js</path>
+      </script>
+      <depends>
+        <module>juzu-ajax</module>
+      </depends>
+      <depends>
+        <module>iphonePlugin</module>
       </depends>
       <depends>
         <module>socialUtil</module>

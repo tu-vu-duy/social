@@ -1,0 +1,49 @@
+#{param name=_ctx/}
+#{param name=isRestricted/}
+#{param name=restrictedGroups/}
+
+<%
+	String portletId = "UISpaceManagementPortlet";
+	String statusClass = (isRestricted) ? "show" : "hidden";
+	//
+	String iphoneLabels = "{YES:'"+_ctx.appRes("SpaceManagementPortlet.label.YES")+"', NO:'"+_ctx.appRes("SpaceManagementPortlet.label.NO")+"'}";
+	def requireJS = _ctx.getRequestContext().getJavascriptManager().getRequireJS();
+	requireJS.require("PORTLET/social-juzu/SpaceManagementPortlet", "SpaceManager")
+					 .addScripts("SpaceManager.init('" + portletId + "', '" + isRestricted + "', "+iphoneLabels+");");
+%>
+
+<div class="uiSpaceManagementPortlet" id="<%=portletId%>">
+	<div class="space-container">
+		<div id="ControlPanel" class="clearfix">
+			<div class="pull-left">
+				<% 
+				String checked = (isRestricted) ? "checked=\"checked\"" : "";
+				%>
+			<input type="checkbox" class="yesno" data-check="<%=isRestricted%>" <%=checked%> style="visibility: hidden;">
+			</div>
+			<div class="pull-left restrict-label"><%=_ctx.appRes("SpaceManagementPortlet.label.RestrictWhoCanCreateNewSpaces")%>
+				<a href="#"><i class="uiIconQuestion uiIconLightGray" title=""></i></a>
+			</div>
+		 
+		</div>
+		<div id="GroupList" class="uilist-groups <%=statusClass%>">
+			<ul class="restrict-groups">
+			<%
+				List restrictedGroups = restrictedGroups.getSibilings();
+			if (restrictedGroups.size() > 0) {
+				for (groupNode in restrictedGroups) {
+		%>
+								<li id="<%= groupNode.getId()%>"><%=_ctx.appRes("SpaceManagementPortlet.label.MemberOf_X_Group", groupNode.getLabel())%><a class="actionIcon" href="javascript:void(0)"><i class="uiIconDelete uiIconLightGray"></i></a></li>
+			<% 		}
+			} else {
+				print("<li></li>");
+			}
+		%>
+			</ul>
+			<div id="MoreGroupList"></div>
+			<div class="uiAction">
+				<button class="align-center btn btn-primary" id="AddGroupButton" type="button" title="<%=_ctx.appRes("SpaceManagementPortlet.title.AddRole")%>"><%=_ctx.appRes("SpaceManagementPortlet.action.AddRole")%></button>
+			</div>
+		</div>
+	</div>
+</div>

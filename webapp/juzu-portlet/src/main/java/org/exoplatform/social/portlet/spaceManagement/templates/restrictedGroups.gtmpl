@@ -1,0 +1,14 @@
+#{param name=restrictedGroups/}
+    
+<% 
+   def restrictedGroups = restrictedGroups.getSibilings();
+   if (restrictedGroups. size() > 0) { %>
+     
+   <% for (groupNode in restrictedGroups) { 
+        def key = groupNode.getId();
+        def label = groupNode.getLabel();
+   %>
+        <li id="<%= key%>"><b>member</b> of <b><%= label %></b> group<a href="javascript:void(0)" class="icon-remove-circle close-btn-space"></a></li>
+   <% } %>
+     
+<% } %>

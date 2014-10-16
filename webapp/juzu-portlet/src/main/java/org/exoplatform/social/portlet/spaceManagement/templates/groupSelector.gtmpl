@@ -1,0 +1,51 @@
+#{param name=allGroups/}
+#{param name=isRootNode/}
+
+<div class="ClearFix">
+  <div id="GroupNavigation" class="GroupNavigation"></div>
+  <span id="navText" class="nav-text">...</span>
+</div>
+<div id="GroupSelector" class="GroupSelector ClearFix">
+  <div id="LeftSelector" class="LeftSelector">
+    <% if (!isRootNode) {%>
+    <div id="UpLevelBtn">...</div>
+    <% } %>
+		<div id="UISelectGroup">
+		  <ul>
+		  <% if (allGroups.getSibilings().size() > 0) {
+		      def allGroups = allGroups.getSibilings(); 
+		      for (groupNode in allGroups) {
+		        def key = groupNode.getId();
+		        def elId = key.replace("/", "");
+            def label = groupNode.getLabel();
+		    %>
+		        <li id="<%= elId %>" val="<%= key %>" title="<%= label %>">
+		          <a href="javascript:void(0);"><%= label %></a>
+		          <ul id="">
+		            <%
+		              def children = groupNode.getChirldren();
+		              for (child  in children) {
+		                def keyChild = child.getId();
+		                def elChildId = keyChild.replace("/", "");
+		                def labelChild = child.getLabel();
+		                if (child.hasChildren()) {
+		            %>
+		                <li id="<%= elChildId %>" val="<%= keyChild %>" title="<%= labelChild %>"><a id="SubChild" href="javascript:void(0);"><%= labelChild %></a></li>
+		            <%  } else { %>
+		                <li id="<%= elChildId %>" val="<%= keyChild %>" title="<%= labelChild %>"><a href="javascript:void(0);"><%= labelChild %></a></li>
+		            <%  } %>    
+		            <% } %> 
+		          </ul>
+		        </li>
+		    <% } %>
+		  <% } %>
+		  </ul>
+		</div>
+		<p id="msg" class="alert-info"></p>
+	</div>
+	<div id="RightSelector" class="RightSelector">
+	  <ul>
+	    <span>...</span>
+	  </ul>
+	</div>
+</div>
