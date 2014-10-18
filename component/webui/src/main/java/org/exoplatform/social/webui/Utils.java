@@ -16,6 +16,7 @@
  */
 package org.exoplatform.social.webui;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
@@ -27,7 +28,10 @@ import java.util.ResourceBundle;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpUtils;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.commons.utils.ExpressionUtil;
 import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.container.ExoContainer;
@@ -47,11 +51,14 @@ import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
-import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.Membership;
+import org.exoplatform.services.organization.MembershipHandler;
 import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.IdentityConstants;
+import org.exoplatform.services.security.MembershipEntry;
 import org.exoplatform.social.common.router.ExoRouter;
 import org.exoplatform.social.common.router.ExoRouter.Route;
-import org.exoplatform.social.common.utils.GroupTree;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -836,7 +843,7 @@ public class Utils {
   * @param userId
   * @return
   * @throws Exception
-  * @since 4.0.0
+  * @since 4.2
   */
   public static boolean hasCreateSpacePermission(String userId) throws Exception {
     ExoContainer container = PortalContainer.getInstance();
@@ -849,20 +856,39 @@ public class Utils {
 
     if (!groupPrefs.isOnRestricted())
       return true;
-
-    OrganizationService organizationService = (OrganizationService) container.getComponentInstanceOfType(OrganizationService.class);
-
-    Collection<?> memberGroups = organizationService.getGroupHandler()
-                                                         .findGroupsOfUser(userId);
-    GroupTree restrictedTree = groupPrefs.getRestrictedGroups();
-
-    for (Object group : memberGroups) {
-      Group grp = (Group) group;
-
-      if (restrictedTree.hasNode(grp.getId()))
-        return true;
+    //
+    return CollectionUtils.containsAny(getAlMembershipOfUser(userId), GroupPrefs.getRestrictedMemberships());
+  }
+  
+  /**
+   * Get all Memberships of the user. If userId is null, memberships of the current user will be returned.
+   * 
+   * @param userId The user'id
+   * @return The list of memberships
+   * @throws Exception
+   * @since 4.2
+   */
+  public static List<String> getAlMembershipOfUser(String userId) throws Exception {
+    List<String> membershipOfUser = new ArrayList<String>();
+    if (IdentityConstants.ANONIM.equals(userId)) {
+      return membershipOfUser;
     }
-
-    return false;
+    //
+    org.exoplatform.services.security.Identity identity = ConversationState.getCurrent().getIdentity();
+    String currentUserId = identity.getUserId();
+    //
+    if (StringUtils.isEmpty(userId) || currentUserId.equals(userId)) {
+      for (MembershipEntry membership : identity.getMemberships()) {
+        membershipOfUser.add(membership.getMembershipType() + ":" + membership.getGroup());
+      }
+    } else {
+      MembershipHandler membershipHandler = CommonsUtils.getService(OrganizationService.class).getMembershipHandler();
+      Collection<?> memberships = membershipHandler.findMembershipsByUser(userId);
+      for (Object o : memberships) {
+        Membership membership = (Membership) o;
+        membershipOfUser.add(membership.getMembershipType() + ":" + membership.getGroupId());
+      }
+    }
+    return membershipOfUser;
   }
 }

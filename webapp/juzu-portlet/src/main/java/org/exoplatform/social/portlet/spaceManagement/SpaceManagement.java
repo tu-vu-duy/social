@@ -1,6 +1,11 @@
 package org.exoplatform.social.portlet.spaceManagement;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -15,14 +20,13 @@ import juzu.impl.common.JSON;
 import juzu.request.RenderContext;
 import juzu.template.Template;
 
-import org.exoplatform.commons.api.notification.model.UserSetting;
-import org.exoplatform.commons.api.notification.model.UserSetting.FREQUENCY;
 import org.exoplatform.commons.juzu.ajax.Ajax;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.services.organization.MembershipType;
+import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.core.space.GroupPrefs;
 import org.exoplatform.social.core.space.spi.SpaceService;
-import org.exoplatform.social.webui.Utils;
 import org.exoplatform.webui.application.WebuiRequestContext;
 
 public class SpaceManagement {
@@ -38,6 +42,9 @@ public class SpaceManagement {
   ResourceBundle bundle;  
   
   @Inject
+  OrganizationService organizationService;
+
+  @Inject
   GroupPrefs groupPrefs;
 
   @Inject
@@ -46,6 +53,7 @@ public class SpaceManagement {
   
   private String currentSelected = "/";
   private Locale locale = Locale.ENGLISH;
+  private LinkedList<String> listMemberhip;
 
   @View
   public void index(RenderContext renderContext) {
@@ -63,7 +71,7 @@ public class SpaceManagement {
     ContextMapper context = new ContextMapper(bundle);
     parameters.put("_ctx", context);
     parameters.put("isRestricted", groupPrefs.isOnRestricted());
-    parameters.put("restrictedGroups", GroupPrefs.getRestrictedGroups());
+    parameters.put("restrictedNodes", GroupPrefs.getRestrictedNodes());
 
     index.render(parameters);
   }
@@ -74,7 +82,6 @@ public class SpaceManagement {
     JSON data = new JSON();
     //restricted
     try {
-      System.out.println("restricted " + restricted);
       boolean isOnRestricted = Boolean.valueOf(restricted);
       //
       groupPrefs.setOnRestricted(isOnRestricted);
@@ -99,6 +106,7 @@ public class SpaceManagement {
     parameters.put("allGroups", groupPrefs.getGroups());
     parameters.put("isRootNode", true);
     parameters.put("currentSelected", currentSelected);
+    parameters.put("listMemberhip", (groupId == null) ? new ArrayList<String>() : getMembershipTypes());
     //
     return uiPopupGroup.ok(parameters).withMimeType("text/html");
   }
@@ -187,6 +195,36 @@ public class SpaceManagement {
   }
   */
   
+  
+  private List<String> getMembershipTypes() {
+    if (listMemberhip == null) {
+      try {
+        List<MembershipType> memberships;
+        memberships = (List<MembershipType>) organizationService.getMembershipTypeHandler().findMembershipTypes();
+        Collections.sort(memberships, new Comparator<MembershipType>() {
+          @Override
+          public int compare(MembershipType o1, MembershipType o2) {
+            return o1.getName().compareTo(o2.getName());
+          }
+        });
+        listMemberhip = new LinkedList<String>();
+        boolean containWildcard = false;
+        for (MembershipType mt : memberships) {
+          listMemberhip.add(mt.getName());
+          if ("*".equals(mt.getName())) {
+            containWildcard = true;
+          }
+        }
+        if (!containWildcard) {
+          listMemberhip.addFirst("*");
+        }
+      } catch (Exception e) {
+        LOG.warn("Get memberships type unsuccessfully.");
+      }
+    }
+    return listMemberhip;
+  }
+
   public class ContextMapper {
     ResourceBundle bundle;
 

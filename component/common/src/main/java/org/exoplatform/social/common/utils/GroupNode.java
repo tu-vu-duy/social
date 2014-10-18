@@ -31,6 +31,7 @@ public class GroupNode {
   private List<GroupNode> chirldren;
   private String id;
   private String label;
+  private String membershipType;
   private GroupNode parent;
   private boolean hasChildren;
   
@@ -64,6 +65,15 @@ public class GroupNode {
     return label;
   }
   
+  public String getMembershipType() {
+    return membershipType;
+  }
+
+  public GroupNode setMembershipType(String membershipType) {
+    this.membershipType = membershipType;
+    return this;
+  }
+
   public boolean hasParent() {
     return this.parent != null;
   }
@@ -118,10 +128,6 @@ public class GroupNode {
       return false;
     }
     
-    if (label != null ? !label.equals(node.label) : node.label != null) {
-      return false;
-    }
-    
     return true;
   }
   
@@ -143,4 +149,8 @@ public class GroupNode {
     return sb.toString();
   }
   
+  @Override
+  public int hashCode() {
+    return id != null ? id.hashCode() : super.hashCode();
+  }
 }

@@ -1,6 +1,6 @@
 #{param name=_ctx/}
 #{param name=isRestricted/}
-#{param name=restrictedGroups/}
+#{param name=restrictedNodes/}
 
 <%
 	String portletId = "UISpaceManagementPortlet";
@@ -29,11 +29,10 @@
 		<div id="GroupList" class="uilist-groups <%=statusClass%>">
 			<ul class="restrict-groups">
 			<%
-				List restrictedGroups = restrictedGroups.getSibilings();
-			if (restrictedGroups.size() > 0) {
-				for (groupNode in restrictedGroups) {
+			if (restrictedNodes.size() > 0) {
+				for (groupNode in restrictedNodes) {
 		%>
-								<li id="<%= groupNode.getId()%>"><%=_ctx.appRes("SpaceManagementPortlet.label.MemberOf_X_Group", groupNode.getLabel())%><a class="actionIcon" href="javascript:void(0)"><i class="uiIconDelete uiIconLightGray"></i></a></li>
+								<li><%=_ctx.appRes("SpaceManagementPortlet.label.MemberOf_X_Group", groupNode.getMembershipType(), groupNode.getLabel())%><a class="actionIcon" id="<%= groupNode.getId()%>" href="javascript:void(0)"><i class="uiIconDelete uiIconLightGray"></i></a></li>
 			<% 		}
 			} else {
 				print("<li></li>");

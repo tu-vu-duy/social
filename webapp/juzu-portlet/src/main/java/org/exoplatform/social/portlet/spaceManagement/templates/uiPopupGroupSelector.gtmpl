@@ -2,6 +2,7 @@
 #{param name=allGroups/}
 #{param name=currentSelected/}
 #{param name=isRootNode/}
+#{param name=listMemberhip/}
 
 
 <div class="UIPopupConfirmation UIPopupWindow UIDragObject uiPopup" style="width: 550px;">
@@ -28,7 +29,7 @@
 			
 				<div class="span6">
 					<div class="uiBox selectGroup noRounded">
-						<h6 class="title">Group</h6>
+						<h6 class="title"><%=_ctx.appRes("SpaceManagementPortlet.label.Group")%></h6>
 						<div class="uiTrees scrollArea">
 							<div class="treeContainer jsContainer">
 								<div class="homeNode clearfix">
@@ -91,35 +92,17 @@
 				</div>
 				<div class="span6">
 					<div class="uiBox noRounded childGoup">
-						<h6 class="title">Group</h6>
+						<h6 class="title"><%=_ctx.appRes("SpaceManagementPortlet.label.Role")%></h6>
 						<ul>
+						<%
+							for (membership in listMemberhip) {
+					  %>	  
 							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> *</a>
+								<a href="javascript:void(0);" id="<%=membership%>"><i class="uiIconMiniArrowRight uiIconLightGray"></i> <%=membership%></a>
 							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> author</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> editor</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> manager</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> member</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> publisher</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> redactor</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> validator</a>
-							</li>
-							<li>
-								<a href="javascript:void(0);" onclick=""><i class="uiIconMiniArrowRight uiIconLightGray"></i> webdesigner</a>
-							</li>
+					  <%
+							}
+						%>
 						</ul>
 					</div>
 				</div>

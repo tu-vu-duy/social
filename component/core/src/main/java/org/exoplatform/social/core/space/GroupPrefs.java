@@ -16,7 +16,14 @@
  */
 package org.exoplatform.social.core.space;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.exoplatform.commons.api.settings.SettingService;
 import org.exoplatform.commons.api.settings.SettingValue;
@@ -26,6 +33,7 @@ import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.Group;
 import org.exoplatform.services.organization.GroupHandler;
+import org.exoplatform.services.organization.MembershipType;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.common.utils.GroupNode;
 import org.exoplatform.social.common.utils.GroupTree;
@@ -45,8 +53,8 @@ public class GroupPrefs {
   
   private static final Log LOG = ExoLogger.getLogger(GroupPrefs.class);
   private static GroupTree treeAllGroups = GroupTree.createInstance();
-  private static GroupTree treeRestrictedGroups = GroupTree.createInstance();
-  
+  private static List<String> restrictedMemberships = new CopyOnWriteArrayList<String>();
+  private static List<GroupNode> restrictedNodes = new ArrayList<GroupNode>();
   private boolean isOnRestricted;
   
   public GroupPrefs(SettingService settingService) {
@@ -56,53 +64,63 @@ public class GroupPrefs {
   }
   
   private void loadSetting() {
-    SettingValue<?>  value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY);
-    
-    //isRestricted value
-    if (value != null) {
-      Boolean boolValue = (Boolean) value.getValue();
-      isOnRestricted = boolValue.booleanValue();
-    }
-    
-    //restricted groups
-    value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY);
-    
-    GroupHandler handler = orgSrv.getGroupHandler();
-    if (value != null) {
-      //
-      String[] groupIds = value.getValue().toString().split(",");
-      try {
-        for(String id : groupIds) {
-          Group currentGroup = handler.findGroupById(id);
-          Group parentGroup = handler.findGroupById(currentGroup.getParentId());
-          Collection<?> children = handler.findGroups(currentGroup);
-          
-          treeRestrictedGroups.addSibilings(buildGroupNode(parentGroup, currentGroup, children));
-        }
-      } catch (Exception e) {
-        // 
-        LOG.warn("Cannot get all groups.");
-      }
-    }
-    
-    //all groups
-    Collection<?> allGroups = null;
     try {
-      allGroups = handler.findGroups(null);
-      
-      for (Object group : allGroups) {
-        if (group instanceof Group) {
-          Group grp = (Group) group;
-          Group parentGroup = grp.getParentId() != null ? handler.findGroupById(grp.getParentId()) : null;
-          Collection<?> children = handler.findGroups(grp);
-          treeAllGroups.addSibilings(buildGroupNode(parentGroup, grp, children));
+      SettingValue<?> value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY);
+
+      // isRestricted value
+      if (value != null) {
+        Boolean boolValue = (Boolean) value.getValue();
+        isOnRestricted = boolValue.booleanValue();
+      }
+
+      // restricted memberships
+      value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY);
+
+      if (value != null) {
+        String[] memberships = ((String) value.getValue()).split(",");
+        try {
+          for (String membership : memberships) {
+            restrictedMemberships.add(membership);
+            restrictedNodes.add(buildGroupNode(membership));
+          }
+        } catch (Exception e) {
+          LOG.warn("Cannot get all restricted memberships.", e);
         }
       }
       
+      // all groups
+      GroupHandler handler = orgSrv.getGroupHandler();
+      Collection<?> allGroups = null;
+      try {
+        allGroups = handler.findGroups(null);
+
+        for (Object group : allGroups) {
+          if (group instanceof Group) {
+            Group grp = (Group) group;
+            Group parentGroup = grp.getParentId() != null ? handler.findGroupById(grp.getParentId()) : null;
+            Collection<?> children = handler.findGroups(grp);
+            treeAllGroups.addSibilings(buildGroupNode(parentGroup, grp, children));
+          }
+        }
+
+      } catch (Exception e) {
+        LOG.warn("Cannot get all groups.", e);
+      }
     } catch (Exception e) {
-      // 
-      LOG.warn("Cannot get all groups.");
+      LOG.warn("Load setting is unsuccessfully", e);
     }
+  }
+  
+  private GroupNode buildGroupNode(String membership) {
+    String groupId = membership.substring(membership.indexOf(":"));
+    String membershipType = membership.substring(0, membership.indexOf(":"));
+    String groupLabel = groupId;
+    try {
+      groupLabel = orgSrv.getGroupHandler().findGroupById(groupId).getLabel();
+    } catch (Exception e) {
+      LOG.warn("Group " + groupId + " not exitsting");
+    }
+    return GroupNode.createInstance(groupId, groupLabel).setMembershipType(membershipType);
   }
   
   private GroupNode buildGroupNode(Group parentGroup, Group currentGroup, Collection children) {
@@ -110,11 +128,9 @@ public class GroupPrefs {
     try {
       if (currentGroup != null) {
         currentNode = GroupNode.createInstance(currentGroup.getId(), currentGroup.getLabel());
-        
         //
         if (parentGroup != null)
           currentNode.setParent(GroupNode.createInstance(parentGroup.getId(), parentGroup.getLabel()));
-        
         //
         if (children != null) {
           GroupHandler handler = orgSrv.getGroupHandler();
@@ -140,30 +156,64 @@ public class GroupPrefs {
   public GroupTree getGroups() {
     return treeAllGroups;  
   }
+
+  public List<String> getMembershipTypes() {
+    return listMemberhip;  
+  }
   
   public void setGroups(GroupTree tree) {
-    this.treeAllGroups = tree;
+    treeAllGroups = tree;
   }
   
-  public static GroupTree getRestrictedGroups() {
-    return treeRestrictedGroups;  
+  public static List<String> getRestrictedMemberships() {
+    return Collections.unmodifiableList(new ArrayList<String>(restrictedMemberships));
+  }
+
+  public static List<GroupNode> getRestrictedNodes() {
+    return Collections.unmodifiableList(restrictedNodes);
   }
   
-  public void addRestrictedGroups(String groupId) {
+  public void addRestrictedMemberships(String membership) {
     try {
-      Group group = orgSrv.getGroupHandler().findGroupById(groupId);
-      treeRestrictedGroups.addSibilings(GroupNode.createInstance(group.getId(), group.getLabel()));
-      
-      //
-      this.settingService.set(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY, SettingValue.create(treeRestrictedGroups.toValue()));
+      if (!restrictedMemberships.contains(membership)) {
+        restrictedMemberships.add(membership);
+        //
+        this.settingService.set(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY, SettingValue.create(getValueRestrictedMemberships()));
+        //
+        restrictedNodes.add(buildGroupNode(membership));
+      }
     } catch (Exception e) {
-      // 
-      LOG.warn("Cannot get group for '" + groupId + "'");
+      LOG.warn("Cannot add restricted membership: " + membership, e);
     }
   }
   
-  public void removeRestrictedGroups(String groupId) {
-    treeRestrictedGroups.remove(groupId);
+  private static String getValueRestrictedMemberships() {
+    Iterator<String> i = restrictedMemberships.iterator();
+    if (!i.hasNext()) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (;;) {
+      sb.append(i.next());
+      if (!i.hasNext()) {
+        return sb.toString();
+      }
+      sb.append(",");
+    }
+  }
+  
+  public void removeRestrictedGroups(String membership) {
+    try {
+      if (restrictedMemberships.contains(membership)) {
+        restrictedMemberships.remove(membership);
+        //
+        settingService.set(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY, SettingValue.create(getValueRestrictedMemberships()));
+        //
+        restrictedNodes.remove(buildGroupNode(membership));
+      }
+    } catch (Exception e) {
+      LOG.warn("Cannot remove restricted membership: " + membership, e);
+    }
   }
   
   public boolean isOnRestricted() {
