@@ -32,7 +32,7 @@
 			if (restrictedNodes.size() > 0) {
 				for (groupNode in restrictedNodes) {
 		%>
-								<li><%=_ctx.appRes("SpaceManagementPortlet.label.MemberOf_X_Group", groupNode.getMembershipType(), groupNode.getLabel())%><a class="actionIcon" id="<%= groupNode.getId()%>" href="javascript:void(0)"><i class="uiIconDelete uiIconLightGray"></i></a></li>
+								<li><%=_ctx.appRes("SpaceManagementPortlet.label.MemberOf_X_Group", groupNode.getMembershipType(), groupNode.getLabel())%><a class="actionIcon removeMembership" data-membership="<%= groupNode.getMembership()%>" href="javascript:void(0)"><i class="uiIconDelete uiIconLightGray"></i></a></li>
 			<% 		}
 			} else {
 				print("<li></li>");

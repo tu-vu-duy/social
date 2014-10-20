@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +24,8 @@ import juzu.template.Template;
 import org.exoplatform.commons.juzu.ajax.Ajax;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.GroupHandler;
 import org.exoplatform.services.organization.MembershipType;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.core.space.GroupPrefs;
@@ -94,6 +97,61 @@ public class SpaceManagement {
     }
     return Response.ok(data.toString()).withMimeType("application/json");
   }
+
+  @Ajax
+  @Resource
+  public Response saveRestrictedMembership(String membershipType) {
+    JSON data = new JSON();
+    //restricted
+    try {
+      //
+      String membership = membershipType + ":" + currentSelected;
+      LOG.info("Save membership: " + membership);
+      groupPrefs.addRestrictedMemberships(membership);
+      //
+      data.set("ok", "true");
+    } catch (Exception e) {
+      data.set("ok", "false");
+      data.set("status", e.toString());
+    }
+    return Response.ok(data.toString()).withMimeType("application/json");
+  }
+
+  @Ajax
+  @Resource
+  public Response removeRestrictedMembership(String membership) {
+    JSON data = new JSON();
+    //restricted
+    try {
+      //
+      LOG.info("Remove membership: " + membership);
+      groupPrefs.removeRestrictedMemberships(membership);
+      //
+      data.set("ok", "true");
+    } catch (Exception e) {
+      data.set("ok", "false");
+      data.set("status", e.toString());
+    }
+    return Response.ok(data.toString()).withMimeType("application/json");
+  }
+
+  @Ajax
+  @Resource
+  public Response setSelectedGroup(String groupId, String hashChild) {
+    JSON data = new JSON();
+    //restricted
+    try {
+      //
+      currentSelected = groupId;
+      data.set("ok", "true");
+      Map<String, String> breadcumbs = getBreadcumbs(groupId);
+      data.map("breadcumbs", breadcumbs);
+    } catch (Exception e) {
+      data.set("ok", "false");
+      data.set("status", e.toString());
+    }
+    return Response.ok(data.toString()).withMimeType("application/json");
+  }
   
   @Ajax
   @Resource
@@ -106,9 +164,27 @@ public class SpaceManagement {
     parameters.put("allGroups", groupPrefs.getGroups());
     parameters.put("isRootNode", true);
     parameters.put("currentSelected", currentSelected);
-    parameters.put("listMemberhip", (groupId == null) ? new ArrayList<String>() : getMembershipTypes());
+    parameters.put("breadcumbs", getBreadcumbs(groupId));
+    parameters.put("listMemberhip", (groupId == null || groupId == "/") ? new ArrayList<String>() : getMembershipTypes());
     //
     return uiPopupGroup.ok(parameters).withMimeType("text/html");
+  }
+  
+  private Map<String, String> getBreadcumbs(String groupId) {
+    LinkedHashMap<String, String> breadcumbs = new LinkedHashMap<String, String>();
+    try {
+      GroupHandler handler = organizationService.getGroupHandler();
+      Group current = handler.findGroupById(groupId);
+      while (current.getParentId() != null) {
+        breadcumbs.put(current.getId(), current.getLabel());
+        //
+        current = handler.findGroupById(current.getParentId());
+      }
+    } catch (Exception e) {
+      LOG.warn("Build breadcumbs unsuccessfully.", e);
+    }
+    //
+    return breadcumbs;
   }
   
 /*

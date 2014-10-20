@@ -74,6 +74,10 @@ public class GroupNode {
     return this;
   }
 
+  public String getMembership() {
+    return membershipType + ":" + id;
+  }
+
   public boolean hasParent() {
     return this.parent != null;
   }

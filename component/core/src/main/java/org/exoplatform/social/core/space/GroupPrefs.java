@@ -19,9 +19,7 @@ package org.exoplatform.social.core.space;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -33,7 +31,6 @@ import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.Group;
 import org.exoplatform.services.organization.GroupHandler;
-import org.exoplatform.services.organization.MembershipType;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.common.utils.GroupNode;
 import org.exoplatform.social.common.utils.GroupTree;
@@ -157,10 +154,6 @@ public class GroupPrefs {
     return treeAllGroups;  
   }
 
-  public List<String> getMembershipTypes() {
-    return listMemberhip;  
-  }
-  
   public void setGroups(GroupTree tree) {
     treeAllGroups = tree;
   }
@@ -202,7 +195,7 @@ public class GroupPrefs {
     }
   }
   
-  public void removeRestrictedGroups(String membership) {
+  public void removeRestrictedMemberships(String membership) {
     try {
       if (restrictedMemberships.contains(membership)) {
         restrictedMemberships.remove(membership);

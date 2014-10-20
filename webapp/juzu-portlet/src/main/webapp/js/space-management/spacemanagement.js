@@ -17,7 +17,10 @@
         onChange : SpaceManager.iphoneSwitch
       });
       portlet.find('#AddGroupButton').on('click', SpaceManager.openGroupSelector);
-      
+      //saveMembership
+      portlet.find('#MembershipTypes').find('a.membershipType').on('click', SpaceManager.saveMembership);
+      //removeMembership
+      portlet.find('#GroupList').find('a.removeMembership').on('click', SpaceManager.removeMembership);
     },
     iphoneSwitch : function(elm) {
       var input = $(elm);
@@ -80,19 +83,65 @@
       });
     },
     showChild : function() {
-      var groupId = $(this).data('id');
-      var hashChild = $(this).data('child');
+      var current = $(this);
+      var groupId = current.data('id');
+      var hashChild = current.data('child');
       groupId = (groupId) ? groupId : '/';
       hashChild = (hashChild) ? hashChild : 'false';
       console.log('groupId ' + groupId + ' hashChild ' + hashChild);
       //
-      
+      if(hashChild) {
+        current.parents('ul.parentContainer:first').find('.childrenContainer').hide();
+        current.parents('ul.parentContainer:first').find('.expandIcon').attr('class', 'collapseIcon');
+        current.find('.childrenContainer:first').show();
+        current.find('a.uiIconNode:first').removeClass('collapseIcon').addClass('expandIcon nodeSelected');
+        //
+        $(SpaceManager.portletId).jzAjax({
+          url : "SpaceManagement.setSelectedGroup()",
+          data : {
+            "groupId" : (groupId) ? groupId : '/',
+            "hashChild" : (hashChild) ? hashChild : 'false'
+          },
+          success : function(data) {}
+        });
+      }
     },
-    addGroup : function(selectedElId, groupName) {
-      
+    saveMembership : function() {
+      var membershipType = $(this).data('membership-type');
+      //
+      $(SpaceManager.portletId).jzAjax({
+        url : "SpaceManagement.saveRestrictedMembership()",
+        data : {
+          "membershipType" : membershipType
+        },
+        success : function(data) {
+          
+        }
+      });
     },
-    initTree : function() {
-  
+    removeMembership : function(evt) {
+      var membership = $(this).data('membership');
+      //
+      $(SpaceManager.portletId).jzAjax({
+        url : "SpaceManagement.removeRestrictedMembership()",
+        data : {
+          "membership" : membership
+        },
+        success : function(data) {
+          
+        }
+      });
+    },
+    updatePortlet : function() {
+      $(SpaceManager.portletId).jzAjax({
+        url : "SpaceManagement.removeRestrictedMembership()",
+        data : {
+          "membership" : membership
+        },
+        success : function(data) {
+          
+        }
+      });
     }
   };
   return SpaceManager;

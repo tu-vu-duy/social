@@ -2,6 +2,7 @@
 #{param name=allGroups/}
 #{param name=currentSelected/}
 #{param name=isRootNode/}
+#{param name=breadcumbs/}
 #{param name=listMemberhip/}
 
 
@@ -15,21 +16,30 @@
 			<div class="uiGrayLightBox uiBox noRounded">
 				<ul class="breadcrumb">
 					<li><i class="uiIconTree uiIconLightGray"></i></li>
-					<li>
-						<a href="javascript:void(0);" onclick="" class="">Platform</a>
+				<%
+					def breadcumbIds = breadcumbs.keySet(); 
+					for (int i = breadcumbIds.size() - 1; i >= 0; --i) {
+					  String groupId = breadcumbIds[i];
+					  String groupLabel = breadcumbs.get(groupId);
+					  String clazz = "";
+					  if(i == 0) {
+					    clazz = " class=\"active\"";
+					  }
+				%>
+					<li<%=clazz%>>
+						<a href="javascript:void(0);" onclick="void(0)" data-id="<%=groupId%>"<%=clazz%>><%=groupLabel%></a>
+						<% if(i > 0) { %>
 						<i class="uiIconArrowRightMini uiIconLightGray"></i>
+						<% } %>
 					</li>
-					<li class="active">
-						<a href="javascript:void(0);" onclick="" class="active">Users</a>
-						<i class="uiIconArrowRightMini uiIconLightGray"></i>
-					</li>
+				<% } %>
 				</ul>
 			</div>
 			<div id="GroupSelector" class="row-fluid">
 			
 				<div class="span6">
 					<div class="uiBox selectGroup noRounded">
-						<h6 class="title"><%=_ctx.appRes("SpaceManagementPortlet.label.Group")%></h6>
+						<h6 class="title"><%=_ctx.appRes("GroupSelector.label.Group")%></h6>
 						<div class="uiTrees scrollArea">
 							<div class="treeContainer jsContainer">
 								<div class="homeNode clearfix">
@@ -52,7 +62,7 @@
 												clazzIcon = "uiIconEmpty " + clazzIcon;
 												hasChild = "false";
 											} else if(clazzIcon.length() == 0) {
-												clazzIcon = "collapseIcon"
+												clazzIcon = "collapseIcon";
 											} else {
 												clazzIcon = "expandIcon " + clazzIcon;
 											}
@@ -69,7 +79,7 @@
 														  clazzIcon = "uiIconEmpty " + clazzIcon;
 															hasChild = "false";
 														} else if(clazzIcon.length() == 0) {
-														  clazzIcon = "collapseIcon"
+														  clazzIcon = "collapseIcon";
 														} else {
 															clazzIcon = "expandIcon " + clazzIcon;
 														}
@@ -91,14 +101,14 @@
 				
 				</div>
 				<div class="span6">
-					<div class="uiBox noRounded childGoup">
-						<h6 class="title"><%=_ctx.appRes("SpaceManagementPortlet.label.Role")%></h6>
+					<div id="MembershipTypes" class="uiBox noRounded childGoup">
+						<h6 class="title"><%=_ctx.appRes("GroupSelector.label.Role")%></h6>
 						<ul>
 						<%
 							for (membership in listMemberhip) {
 					  %>	  
 							<li>
-								<a href="javascript:void(0);" id="<%=membership%>"><i class="uiIconMiniArrowRight uiIconLightGray"></i> <%=membership%></a>
+								<a class="membershipType" href="javascript:void(0);" data-membership-type="<%=membership%>"><i class="uiIconMiniArrowRight uiIconLightGray"></i> <%=membership%></a>
 							</li>
 					  <%
 							}
