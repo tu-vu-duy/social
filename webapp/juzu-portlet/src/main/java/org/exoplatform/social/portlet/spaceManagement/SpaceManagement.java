@@ -1,5 +1,6 @@
 package org.exoplatform.social.portlet.spaceManagement;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -67,9 +68,7 @@ public class SpaceManagement {
     if (bundle == null) {
       bundle = renderContext.getApplicationContext().resolveBundle(locale);
     }
-    
     Map<String, Object> parameters = new HashMap<String, Object>();
-
     //
     ContextMapper context = new ContextMapper(bundle);
     parameters.put("_ctx", context);
@@ -77,6 +76,18 @@ public class SpaceManagement {
     parameters.put("restrictedNodes", GroupPrefs.getRestrictedNodes());
 
     index.render(parameters);
+  }
+  
+  @Ajax
+  @Resource
+  public Response reloadPortlet() {
+    Map<String, Object> parameters = new HashMap<String, Object>();
+    //
+    ContextMapper context = new ContextMapper(bundle);
+    parameters.put("_ctx", context);
+    parameters.put("isRestricted", groupPrefs.isOnRestricted());
+    parameters.put("restrictedNodes", GroupPrefs.getRestrictedNodes());
+    return index.ok(parameters).withMimeType("text/html");
   }
   
   @Ajax
@@ -101,38 +112,38 @@ public class SpaceManagement {
   @Ajax
   @Resource
   public Response saveRestrictedMembership(String membershipType) {
-    JSON data = new JSON();
     //restricted
+    if(!groupPrefs.isOnRestricted()) {
+      return responseError("The restricted not active.");
+    }
     try {
       //
-      String membership = membershipType + ":" + currentSelected;
-      LOG.info("Save membership: " + membership);
+      String membership = membershipType + ":" + getCurrentSelected();
       groupPrefs.addRestrictedMemberships(membership);
+      LOG.info("Save membership: " + membership);
       //
-      data.set("ok", "true");
     } catch (Exception e) {
-      data.set("ok", "false");
-      data.set("status", e.toString());
+      return responseError(e.toString());
     }
-    return Response.ok(data.toString()).withMimeType("application/json");
+    return reloadPortlet();
   }
 
   @Ajax
   @Resource
   public Response removeRestrictedMembership(String membership) {
-    JSON data = new JSON();
     //restricted
     try {
+      if(!groupPrefs.isOnRestricted()) {
+        return responseError("The restricted not active.");
+      }
       //
       LOG.info("Remove membership: " + membership);
       groupPrefs.removeRestrictedMemberships(membership);
       //
-      data.set("ok", "true");
     } catch (Exception e) {
-      data.set("ok", "false");
-      data.set("status", e.toString());
+      return responseError(e.toString());
     }
-    return Response.ok(data.toString()).withMimeType("application/json");
+    return reloadPortlet();
   }
 
   @Ajax
@@ -142,10 +153,11 @@ public class SpaceManagement {
     //restricted
     try {
       //
-      currentSelected = groupId;
+      setCurrentSelected(groupId);
+      LOG.info("setSelectedGroup: " + getCurrentSelected());
       data.set("ok", "true");
       Map<String, String> breadcumbs = getBreadcumbs(groupId);
-      data.map("breadcumbs", breadcumbs);
+      data.set("breadcumbs", breadcumbs);
     } catch (Exception e) {
       data.set("ok", "false");
       data.set("status", e.toString());
@@ -156,14 +168,18 @@ public class SpaceManagement {
   @Ajax
   @Resource
   public Response openGroupSelector(String groupId, String hashChild) {
-    this.currentSelected = groupId;
-    Map<String, Object> parameters = new HashMap<String, Object>();
+    if(!groupPrefs.isOnRestricted()) {
+      return Response.ok("").withMimeType("text/html");
+    }
+    setCurrentSelected(groupId);
+    LOG.info("openGroupSelector: " + getCurrentSelected());
     //
+    Map<String, Object> parameters = new HashMap<String, Object>();
     ContextMapper context = new ContextMapper(bundle);
     parameters.put("_ctx", context);
     parameters.put("allGroups", groupPrefs.getGroups());
     parameters.put("isRootNode", true);
-    parameters.put("currentSelected", currentSelected);
+    parameters.put("currentSelected", getCurrentSelected());
     parameters.put("breadcumbs", getBreadcumbs(groupId));
     parameters.put("listMemberhip", (groupId == null || groupId == "/") ? new ArrayList<String>() : getMembershipTypes());
     //
@@ -173,18 +189,28 @@ public class SpaceManagement {
   private Map<String, String> getBreadcumbs(String groupId) {
     LinkedHashMap<String, String> breadcumbs = new LinkedHashMap<String, String>();
     try {
-      GroupHandler handler = organizationService.getGroupHandler();
-      Group current = handler.findGroupById(groupId);
-      while (current.getParentId() != null) {
+      if(groupId != null && !groupId.isEmpty() && !groupId.equals("/")) {
+        GroupHandler handler = organizationService.getGroupHandler();
+        Group current = handler.findGroupById(groupId);
         breadcumbs.put(current.getId(), current.getLabel());
-        //
-        current = handler.findGroupById(current.getParentId());
+        while (current.getParentId() != null) {
+          current = handler.findGroupById(current.getParentId());
+          breadcumbs.put(current.getId(), current.getLabel());
+        }
       }
     } catch (Exception e) {
       LOG.warn("Build breadcumbs unsuccessfully.", e);
     }
     //
+    LOG.info("getBreadcumbs: " + breadcumbs.toString());
     return breadcumbs;
+  }
+  
+  private Response responseError(String message) {
+    JSON data = new JSON();
+    data.set("ok", "false");
+    data.set("message", message);
+    return Response.ok(data.toString()).withMimeType("application/json");
   }
   
 /*
@@ -272,6 +298,15 @@ public class SpaceManagement {
   */
   
   
+  public String getCurrentSelected() {
+    return currentSelected;
+  }
+
+  public void setCurrentSelected(String currentSelected) {
+    LOG.info("setCurrentSelected " + currentSelected);
+    this.currentSelected = currentSelected;
+  }
+
   private List<String> getMembershipTypes() {
     if (listMemberhip == null) {
       try {
@@ -320,7 +355,7 @@ public class SpaceManagement {
     }
     
     public String appRes(String key, String ...args) {
-      return String.format(appRes(key), args);
+      return MessageFormat.format(appRes(key), args);
     }
     
     public WebuiRequestContext getRequestContext() {

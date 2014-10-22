@@ -19,8 +19,10 @@ package org.exoplatform.social.core.space;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.exoplatform.commons.api.settings.SettingService;
@@ -51,7 +53,7 @@ public class GroupPrefs {
   private static final Log LOG = ExoLogger.getLogger(GroupPrefs.class);
   private static GroupTree treeAllGroups = GroupTree.createInstance();
   private static List<String> restrictedMemberships = new CopyOnWriteArrayList<String>();
-  private static List<GroupNode> restrictedNodes = new ArrayList<GroupNode>();
+  private static Set<GroupNode> restrictedNodes = new HashSet<GroupNode>();
   private boolean isOnRestricted;
   
   public GroupPrefs(SettingService settingService) {
@@ -109,7 +111,7 @@ public class GroupPrefs {
   }
   
   private GroupNode buildGroupNode(String membership) {
-    String groupId = membership.substring(membership.indexOf(":"));
+    String groupId = membership.substring(membership.indexOf(":") + 1);
     String membershipType = membership.substring(0, membership.indexOf(":"));
     String groupLabel = groupId;
     try {
@@ -163,7 +165,7 @@ public class GroupPrefs {
   }
 
   public static List<GroupNode> getRestrictedNodes() {
-    return Collections.unmodifiableList(restrictedNodes);
+    return Collections.unmodifiableList(new ArrayList<GroupNode>(restrictedNodes));
   }
   
   public void addRestrictedMemberships(String membership) {

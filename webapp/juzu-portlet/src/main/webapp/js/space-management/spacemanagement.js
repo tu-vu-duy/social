@@ -3,22 +3,23 @@
   var SpaceManager = {
     portletId : "UISpaceManagementPortlet",
     isRestricted : true,
+    iphoneLabel : {YES:'YES', NO:'NO'},
     init : function(portletId, isRestricted, iphoneLabel_) {
-      var iphoneLabel = {YES:'YES', NO:'NO'};
-      iphoneLabel = $.extend(true, {}, iphoneLabel, ((iphoneLabel_ == null) ? {} : iphoneLabel_));
+      SpaceManager.iphoneLabel = $.extend(true, {}, SpaceManager.iphoneLabel, ((iphoneLabel_ == null) ? {} : iphoneLabel_));
       //
-      SpaceManager.isRestricted = isRestricted;
+      SpaceManager.isRestricted = isRestricted || SpaceManager.isRestricted;
       SpaceManager.portletId = '#' + portletId;
       //
+      SpaceManager.registerAction();
+    },
+    registerAction : function() {
       var portlet = $(SpaceManager.portletId);
       portlet.find('input:checkbox.yesno').iphoneStyle({
-        checkedLabel: iphoneLabel.YES,
-        uncheckedLabel: iphoneLabel.NO,
+        checkedLabel: SpaceManager.iphoneLabel.YES,
+        uncheckedLabel: SpaceManager.iphoneLabel.NO,
         onChange : SpaceManager.iphoneSwitch
       });
       portlet.find('#AddGroupButton').on('click', SpaceManager.openGroupSelector);
-      //saveMembership
-      portlet.find('#MembershipTypes').find('a.membershipType').on('click', SpaceManager.saveMembership);
       //removeMembership
       portlet.find('#GroupList').find('a.removeMembership').on('click', SpaceManager.removeMembership);
     },
@@ -39,8 +40,10 @@
           if(data.ok === 'true') {
             checkbox.data('check', data.restricted);
             if(data.restricted === 'true') {
+              SpaceManager.isRestricted = true;
               $(SpaceManager.portletId).find('div.uilist-groups:first').removeClass('hidden');
             } else {
+              SpaceManager.isRestricted = false;
               $(SpaceManager.portletId).find('div.uilist-groups:first').removeClass('show').addClass('hidden');
             }
           } else {
@@ -56,6 +59,11 @@
       }
     },
     openGroupSelector : function(evt) {
+      if($(this).parents('.uilist-groups:first').hasClass('hidden')
+          || SpaceManager.isRestricted == false) {
+        sUtils.setCookies('currentConfirm', '', -300);
+        return;
+      }
       var groupId = $(this).data('id');
       var hashChild = $(this).data('child');
       groupId = (groupId) ? groupId : '/';
@@ -73,8 +81,11 @@
             var popup = $('<div></div>').html(data);
             var pwindow = popup.find('div.UIPopupWindow:first');
             pwindow.find('.uiIconClose:first').on('click', sUtils.PopupConfirmation.hiden);
-            pwindow.find('.parentContainer:first').find('> li.node').on('click', SpaceManager.showChild);
-            //
+            pwindow.find('.parentContainer:first').find('> li.node').find('a:first').on('click', SpaceManager.showChild)
+                   .find('ul.childrenContainer').find('> li.node').find('a:first').on('click', SpaceManager.selectChild);
+            //saveMembership
+            pwindow.find('#MembershipTypes').find('a.membershipType').on('click', SpaceManager.saveMembership);
+      
             sUtils.PopupConfirmation.show(pwindow.css('min-width', '600px').attr('id', 'UISocialPopupConfirmation'));
           } else {
             sUtils.feedbackMessageInline(SpaceManager.portletId, "Carn not open the Group selector");
@@ -83,7 +94,7 @@
       });
     },
     showChild : function() {
-      var current = $(this);
+      var current = $(this).parent();
       var groupId = current.data('id');
       var hashChild = current.data('child');
       groupId = (groupId) ? groupId : '/';
@@ -102,12 +113,19 @@
             "groupId" : (groupId) ? groupId : '/',
             "hashChild" : (hashChild) ? hashChild : 'false'
           },
-          success : function(data) {}
+          success : function(data) {
+            console.log(data);
+          }
         });
       }
     },
+    selectChild : function() {
+    
+    },
     saveMembership : function() {
-      var membershipType = $(this).data('membership-type');
+      var jelm = $(this);
+      var membershipType = jelm.data('membership-type');
+      console.log('save membershipType: ' + membershipType);
       //
       $(SpaceManager.portletId).jzAjax({
         url : "SpaceManagement.saveRestrictedMembership()",
@@ -115,7 +133,8 @@
           "membershipType" : membershipType
         },
         success : function(data) {
-          
+          jelm.parents('div.UIPopupWindow:first').find('.uiIconClose:first').trigger('click');
+          SpaceManager.loadPortlet(data);
         }
       });
     },
@@ -128,20 +147,22 @@
           "membership" : membership
         },
         success : function(data) {
-          
+          SpaceManager.loadPortlet(data);
         }
       });
     },
     updatePortlet : function() {
       $(SpaceManager.portletId).jzAjax({
-        url : "SpaceManagement.removeRestrictedMembership()",
-        data : {
-          "membership" : membership
-        },
+        url : "SpaceManagement.reloadPortlet()",
         success : function(data) {
-          
+          SpaceManager.loadPortlet(data);
         }
       });
+    },
+    loadPortlet :function(data) {
+      var content = $('<div></div>').html(data);
+      $(SpaceManager.portletId).html(content.find(SpaceManager.portletId).html())
+      SpaceManager.registerAction();
     }
   };
   return SpaceManager;

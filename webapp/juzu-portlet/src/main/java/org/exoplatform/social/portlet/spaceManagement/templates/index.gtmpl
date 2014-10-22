@@ -39,7 +39,6 @@
 			}
 		%>
 			</ul>
-			<div id="MoreGroupList"></div>
 			<div class="uiAction">
 				<button class="align-center btn btn-primary" id="AddGroupButton" type="button" title="<%=_ctx.appRes("SpaceManagementPortlet.title.AddRole")%>"><%=_ctx.appRes("SpaceManagementPortlet.action.AddRole")%></button>
 			</div>
