@@ -155,8 +155,9 @@ public class SpaceManagement {
     try {
       //
       setCurrentSelected(groupId);
-      Map<String, String> breadcumbs = getBreadcumbs(groupId);
-      return uiBreadcumbs.ok(breadcumbs).withMimeType("text/html");
+      Map<String, Object> parameters = new HashMap<String, Object>();
+      parameters.put("breadcumbs", getBreadcumbs(groupId));
+      return uiBreadcumbs.ok(parameters).withMimeType("text/html");
     } catch (Exception e) {
       return responseError(e.toString());
     }
