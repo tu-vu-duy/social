@@ -1,0 +1,22 @@
+#{param name=breadcumbs/}
+    
+<ul class="breadcrumb">
+	<li><i class="uiIconTree uiIconLightGray"></i></li>
+<%
+	def breadcumbIds = breadcumbs.keySet(); 
+	for (int i = breadcumbIds.size() - 1; i >= 0; --i) {
+	  String groupId = breadcumbIds[i];
+	  String groupLabel = breadcumbs.get(groupId);
+	  String clazz = "";
+	  if(i == 0) {
+	    clazz = " class=\"active\"";
+	  }
+%>
+	<li<%=clazz%>>
+		<a href="javascript:void(0);" onclick="void(0)" data-id="<%=groupId%>"<%=clazz%>><%=groupLabel%></a>
+		<% if(i > 0) { %>
+		<i class="uiIconArrowRightMini uiIconLightGray"></i>
+		<% } %>
+	</li>
+<% } %>
+</ul>

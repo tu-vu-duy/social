@@ -40,6 +40,9 @@ public class SpaceManagement {
   @Path("index.gtmpl") Template index;
 
   @Inject
+  @Path("uiGroupBreadcrumbs.gtmpl") Template uiBreadcumbs;
+ 
+  @Inject
   @Path("uiPopupGroupSelector.gtmpl") Template uiPopupGroup;
   
   @Inject
@@ -149,22 +152,16 @@ public class SpaceManagement {
   @Ajax
   @Resource
   public Response setSelectedGroup(String groupId, String hashChild) {
-    JSON data = new JSON();
-    //restricted
     try {
       //
       setCurrentSelected(groupId);
-      LOG.info("setSelectedGroup: " + getCurrentSelected());
-      data.set("ok", "true");
       Map<String, String> breadcumbs = getBreadcumbs(groupId);
-      data.set("breadcumbs", breadcumbs);
+      return uiBreadcumbs.ok(breadcumbs).withMimeType("text/html");
     } catch (Exception e) {
-      data.set("ok", "false");
-      data.set("status", e.toString());
+      return responseError(e.toString());
     }
-    return Response.ok(data.toString()).withMimeType("application/json");
   }
-  
+
   @Ajax
   @Resource
   public Response openGroupSelector(String groupId, String hashChild) {
@@ -187,11 +184,12 @@ public class SpaceManagement {
   }
   
   private Map<String, String> getBreadcumbs(String groupId) {
-    LinkedHashMap<String, String> breadcumbs = new LinkedHashMap<String, String>();
+    Map<String, String> breadcumbs = new LinkedHashMap<String, String>();
     try {
       if(groupId != null && !groupId.isEmpty() && !groupId.equals("/")) {
         GroupHandler handler = organizationService.getGroupHandler();
         Group current = handler.findGroupById(groupId);
+        LOG.info("  "+ current.getId()+" : "+ current.getLabel());
         breadcumbs.put(current.getId(), current.getLabel());
         while (current.getParentId() != null) {
           current = handler.findGroupById(current.getParentId());

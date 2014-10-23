@@ -114,7 +114,13 @@
             "hashChild" : (hashChild) ? hashChild : 'false'
           },
           success : function(data) {
-            console.log(data);
+            if(typeof data === 'object') {
+              console.log(data);
+            } else {
+              var content = $('<div></div>').html(data);
+              current.parents('div.UIPopupWindow:first')
+                     .find('#uiBreadcrumb').html(content.html())
+            }
           }
         });
       }

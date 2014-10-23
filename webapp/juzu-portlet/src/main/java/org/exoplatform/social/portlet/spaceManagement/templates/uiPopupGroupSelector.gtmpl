@@ -13,7 +13,7 @@
 	</div>
 	<div class="PopupContent popupContent">
 		<div class="uiGroupMembershipSelector resizable">
-			<div class="uiGrayLightBox uiBox noRounded">
+			<div id="uiBreadcrumb" class="uiGrayLightBox uiBox noRounded">
 				<ul class="breadcrumb">
 					<li><i class="uiIconTree uiIconLightGray"></i></li>
 				<%
