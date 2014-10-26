@@ -179,7 +179,7 @@ public class SpaceManagement {
     parameters.put("isRootNode", true);
     parameters.put("currentSelected", getCurrentSelected());
     parameters.put("breadcumbs", getBreadcumbs(groupId));
-    parameters.put("listMemberhip", (groupId == null || groupId == "/") ? new ArrayList<String>() : getMembershipTypes());
+    parameters.put("listMemberhip", (groupId == null || groupId.equals("/")) ? new ArrayList<String>() : getMembershipTypes());
     //
     return uiPopupGroup.ok(parameters).withMimeType("text/html");
   }

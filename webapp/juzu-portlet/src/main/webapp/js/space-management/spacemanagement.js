@@ -103,9 +103,9 @@
       //
       if(hashChild) {
         current.parents('ul.parentContainer:first').find('.childrenContainer').hide();
-        current.parents('ul.parentContainer:first').find('.expandIcon').attr('class', 'collapseIcon');
+        current.parents('ul.parentContainer:first').find('.expandIcon').removeClass('expandIcon').removeClass('nodeSelected');
+        current.find('> a.uiIconNode:first').addClass('expandIcon nodeSelected');
         current.find('.childrenContainer:first').show();
-        current.find('a.uiIconNode:first').removeClass('collapseIcon').addClass('expandIcon nodeSelected');
         //
         $(SpaceManager.portletId).jzAjax({
           url : "SpaceManagement.setSelectedGroup()",

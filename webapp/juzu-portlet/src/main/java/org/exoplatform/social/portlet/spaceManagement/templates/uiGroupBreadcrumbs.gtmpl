@@ -3,8 +3,8 @@
 <ul class="breadcrumb">
 	<li><i class="uiIconTree uiIconLightGray"></i></li>
 <%
-	def breadcumbIds = breadcumbs.keySet(); 
-	for (int i = breadcumbIds.size() - 1; i >= 0; --i) {
+	def breadcumbIds = breadcumbs.keySet().toArray(new String[breadcumbs.size()]);
+	for (int i = breadcumbs.size() - 1; i >= 0; --i) {
 	  String groupId = breadcumbIds[i];
 	  String groupLabel = breadcumbs.get(groupId);
 	  String clazz = "";
