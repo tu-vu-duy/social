@@ -1,7 +1,6 @@
 package org.exoplatform.social.portlet.spaceManagement;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -57,8 +56,6 @@ public class SpaceManagement {
   @Inject
   SpaceService spaceService;
   
-  
-  private String currentSelected = "/";
   private Locale locale = Locale.ENGLISH;
   private LinkedList<String> listMemberhip;
 
@@ -114,14 +111,13 @@ public class SpaceManagement {
 
   @Ajax
   @Resource
-  public Response saveRestrictedMembership(String membershipType) {
+  public Response saveRestrictedMembership(String membership) {
     //restricted
     if(!groupPrefs.isOnRestricted()) {
       return responseError("The restricted not active.");
     }
     try {
       //
-      String membership = membershipType + ":" + getCurrentSelected();
       groupPrefs.addRestrictedMemberships(membership);
       LOG.info("Save membership: " + membership);
       //
@@ -151,13 +147,17 @@ public class SpaceManagement {
 
   @Ajax
   @Resource
-  public Response setSelectedGroup(String groupId, String hashChild) {
+  public Response setSelectedGroup(String groupId, String hashChild, String isSelectedChild) {
     try {
       //
-      setCurrentSelected(groupId);
-      Map<String, Object> parameters = new HashMap<String, Object>();
-      parameters.put("breadcumbs", getBreadcumbs(groupId));
-      return uiBreadcumbs.ok(parameters).withMimeType("text/html");
+      boolean isChild = Boolean.valueOf(isSelectedChild);
+      if (isChild) {
+        return openGroupSelector(groupId, hashChild);
+      } else {
+        Map<String, Object> parameters = new HashMap<String, Object>();
+        parameters.put("breadcumbs", getBreadcumbs(groupId));
+        return uiBreadcumbs.ok(parameters).withMimeType("text/html");
+      }
     } catch (Exception e) {
       return responseError(e.toString());
     }
@@ -169,17 +169,15 @@ public class SpaceManagement {
     if(!groupPrefs.isOnRestricted()) {
       return Response.ok("").withMimeType("text/html");
     }
-    setCurrentSelected(groupId);
-    LOG.info("openGroupSelector: " + getCurrentSelected());
     //
     Map<String, Object> parameters = new HashMap<String, Object>();
     ContextMapper context = new ContextMapper(bundle);
     parameters.put("_ctx", context);
     parameters.put("allGroups", groupPrefs.getGroups());
     parameters.put("isRootNode", true);
-    parameters.put("currentSelected", getCurrentSelected());
+    parameters.put("currentSelected", groupId);
     parameters.put("breadcumbs", getBreadcumbs(groupId));
-    parameters.put("listMemberhip", (groupId == null || groupId.equals("/")) ? new ArrayList<String>() : getMembershipTypes());
+    parameters.put("listMemberhip", getMembershipTypes());
     //
     return uiPopupGroup.ok(parameters).withMimeType("text/html");
   }
@@ -297,15 +295,6 @@ public class SpaceManagement {
   */
   
   
-  public String getCurrentSelected() {
-    return currentSelected;
-  }
-
-  public void setCurrentSelected(String currentSelected) {
-    LOG.info("setCurrentSelected " + currentSelected);
-    this.currentSelected = currentSelected;
-  }
-
   private List<String> getMembershipTypes() {
     if (listMemberhip == null) {
       try {

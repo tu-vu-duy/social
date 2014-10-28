@@ -58,6 +58,14 @@
         });
       }
     },
+    initPopup : function(pwindow) {
+      pwindow.find('.uiIconClose:first').on('click', sUtils.PopupConfirmation.hiden);
+      var node = pwindow.find('.parentContainer:first').find('> li.node');
+      node.find('a:first').on('click', SpaceManager.showChild);
+      node.find('ul.childrenContainer').find('> li.node').find('a:first').on('click', SpaceManager.selectChild);
+      //saveMembership
+      pwindow.find('#MembershipTypes').find('a.membershipType').on('click', SpaceManager.saveMembership);
+    },
     openGroupSelector : function(evt) {
       if($(this).parents('.uilist-groups:first').hasClass('hidden')
           || SpaceManager.isRestricted == false) {
@@ -79,12 +87,9 @@
           if(data && data.length > 0) {
             sUtils.setCookies('currentConfirm', 'AddGroupButton', 300);
             var popup = $('<div></div>').html(data);
+            //
             var pwindow = popup.find('div.UIPopupWindow:first');
-            pwindow.find('.uiIconClose:first').on('click', sUtils.PopupConfirmation.hiden);
-            pwindow.find('.parentContainer:first').find('> li.node').find('a:first').on('click', SpaceManager.showChild)
-                   .find('ul.childrenContainer').find('> li.node').find('a:first').on('click', SpaceManager.selectChild);
-            //saveMembership
-            pwindow.find('#MembershipTypes').find('a.membershipType').on('click', SpaceManager.saveMembership);
+            SpaceManager.initPopup(pwindow);
       
             sUtils.PopupConfirmation.show(pwindow.css('min-width', '600px').attr('id', 'UISocialPopupConfirmation'));
           } else {
@@ -99,44 +104,76 @@
       var hashChild = current.data('child');
       groupId = (groupId) ? groupId : '/';
       hashChild = (hashChild) ? hashChild : 'false';
-      console.log('groupId ' + groupId + ' hashChild ' + hashChild);
       //
-      if(hashChild) {
-        current.parents('ul.parentContainer:first').find('.childrenContainer').hide();
-        current.parents('ul.parentContainer:first').find('.expandIcon').removeClass('expandIcon').removeClass('nodeSelected');
-        current.find('> a.uiIconNode:first').addClass('expandIcon nodeSelected');
-        current.find('.childrenContainer:first').show();
-        //
+      current.parents('ul.parentContainer:first').find('.childrenContainer').hide();
+      current.parents('ul.parentContainer:first').find('.expandIcon').removeClass('expandIcon').removeClass('nodeSelected');
+      current.find('> a.uiIconNode:first').addClass('expandIcon nodeSelected');
+      current.find('.childrenContainer:first').show();
+      //
+      $(SpaceManager.portletId).jzAjax({
+        url : "SpaceManagement.setSelectedGroup()",
+        data : {
+          "groupId" : groupId,
+          "hashChild" : (hashChild) ? hashChild : false,
+          "isSelectedChild" : false
+        },
+        success : function(data) {
+          if(typeof data === 'object') {
+            console.log(data);
+          } else {
+            var content = $('<div></div>').html(data);
+            var pwindow = current.parents('div.UIPopupWindow:first');
+            pwindow.find('#uiBreadcrumb').html(content.html());
+            pwindow.find('input#currentSelected').val(groupId);
+            if(groupId != '/') {
+              pwindow.find('#MembershipTypes').find('ul:first').removeClass('hidden');
+            } else {
+              pwindow.find('#MembershipTypes').find('ul:first').addClass('hidden');
+            }
+          }
+        }
+      });
+    },
+    selectChild : function() {
+      var current = $(this).parent();
+      var groupId = current.data('id');
+      var hashChild = current.data('child');
+      console.log('groupId ' + groupId + ', hashChild ' + hashChild);
+      if(hashChild == 'true') {
         $(SpaceManager.portletId).jzAjax({
           url : "SpaceManagement.setSelectedGroup()",
           data : {
-            "groupId" : (groupId) ? groupId : '/',
-            "hashChild" : (hashChild) ? hashChild : 'false'
+            "groupId" : groupId,
+            "hashChild" : (hashChild) ? hashChild : 'false',
+            "isSelectedChild" : true
           },
           success : function(data) {
             if(typeof data === 'object') {
               console.log(data);
             } else {
               var content = $('<div></div>').html(data);
-              current.parents('div.UIPopupWindow:first')
-                     .find('#uiBreadcrumb').html(content.html())
+              var cwindow = content.find('div.UIPopupWindow:first');
+              var pwindow = current.parents('div.UIPopupWindow:first');
+              pwindow.html(cwindow.html());
+              //
+              SpaceManager.initPopup(pwindow);
             }
           }
         });
+      } else {
+        
       }
-    },
-    selectChild : function() {
-    
     },
     saveMembership : function() {
       var jelm = $(this);
-      var membershipType = jelm.data('membership-type');
-      console.log('save membershipType: ' + membershipType);
+      var membership = jelm.data('membership-type');
+      membership = membership + ":" + $('input#currentSelected').val();
+      console.log('save membershipType: ' + membership);
       //
       $(SpaceManager.portletId).jzAjax({
         url : "SpaceManagement.saveRestrictedMembership()",
         data : {
-          "membershipType" : membershipType
+          "membership" : membership
         },
         success : function(data) {
           jelm.parents('div.UIPopupWindow:first').find('.uiIconClose:first').trigger('click');
