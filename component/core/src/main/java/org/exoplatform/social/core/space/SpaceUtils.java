@@ -1545,7 +1545,8 @@ public class SpaceUtils {
    */
 
   public static String removeSpecialCharacterInSpaceFilter(String input){
-    String result = input.replaceAll("[^\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]\\?\\*%0-9]", " ");
+    //We don't remove the character "'" because it's a normal character in french 
+    String result = input.replaceAll("[^\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]\\?\\*%0-9\\']", " ");
     result = result.replaceAll("\\s+", " ");
     return result.trim();
   }
