@@ -36,7 +36,9 @@ public class NotificationServerEndpoint {
   @OnOpen
   public void onOpen (Session session, @PathParam("remoteId") final String remoteId) {
     session.getUserProperties().put("remoteId", remoteId);
+    session.setMaxTextMessageBufferSize(32768);
     sessions.add(session);
+    System.out.println("Open session : " + session.getId() + " of user " + remoteId);
   }
 
   @OnMessage

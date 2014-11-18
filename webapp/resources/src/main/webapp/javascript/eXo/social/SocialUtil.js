@@ -161,9 +161,26 @@
 	 	var socketUrl = 'ws://' + location.hostname + ':8080/social-portlet/notify/' + window.eXo.env.portal.userName;
 	 	var socket = new WebSocket(socketUrl);
 	 	socket.onmessage = function(evt) {
-	 		SocialUtils.feedbackMessageInline(comId, evt.data);
+	 		var obj = JSON.parse(evt.data);
+	 		SocialUtils.updateNotificationList(comId, obj.message);
 		}
      },
+     updateNotificationList : function(parentId, message) { 
+         var msgEl = $('#feedbackmessageInline');
+
+         if(msgEl.length === 0) {
+           msgEl = $('<div id="feedbackMessageInline">' +
+                     '  <span class="message"></span>' +
+                     '</div>');
+           msgEl.prependTo($('#'+ parentId));
+         }
+
+         if($(window).scrollTop() > msgEl.offset().top) {
+           msgEl[0].scrollIntoView(true);
+         }
+         msgEl.stop().hide().find("span.message").html(message);
+         msgEl.show('fast').delay(450000).hide('slow');
+       },
      
      feedbackMessageInline : function(parentId, message) { 
        message = message.replace("${simpleQuote}", "'");
