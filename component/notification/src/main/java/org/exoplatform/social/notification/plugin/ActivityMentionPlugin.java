@@ -159,4 +159,13 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
 
     return false;
   }
+
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    NotificationInfo notification = ctx.getNotificationInfo();
+    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
+    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
+    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
+    return identity.getProfile().getFullName() + " mentions you in an activity : " + activity.getTitle();
+  }
 }

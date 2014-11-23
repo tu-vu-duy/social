@@ -118,4 +118,12 @@ public class RelationshipReceivedRequestPlugin extends AbstractNotificationPlugi
     return true;
   }
 
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    NotificationInfo notification = ctx.getNotificationInfo();
+    String sender = notification.getValueOwnerParameter("sender");
+    Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, sender, true);
+    return identity.getProfile().getFullName() + " wants to connect with you.";
+  }
+
 }

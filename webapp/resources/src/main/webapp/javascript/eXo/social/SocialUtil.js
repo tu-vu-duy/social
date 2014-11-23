@@ -158,11 +158,24 @@
      },
      
      alertEvent : function(comId) {
-	 	var socketUrl = 'ws://' + location.hostname + ':8080/social-portlet/notify/' + window.eXo.env.portal.userName;
+	 	var socketUrl = 'ws://' + location.hostname + ':8181/channels/notification-web/' + window.eXo.env.portal.userName;
 	 	var socket = new WebSocket(socketUrl);
+	 	
 	 	socket.onmessage = function(evt) {
 	 		var obj = JSON.parse(evt.data);
 	 		SocialUtils.updateNotificationList(comId, obj.message);
+		}
+	 	
+	 	socket.onopen = function(evt) {
+	 		if (socket.readyState == WebSocket.OPEN) {
+	            socket.send('{"action": "subscribe", "identifier" : "notification-web"}');
+	        } else {
+	            alert("The socket is not open.");
+	        }
+		}
+	 	
+	 	socket.onclose = function(evt) {
+	 		alert("Web Socket closed.");
 		}
      },
      updateNotificationList : function(parentId, message) { 

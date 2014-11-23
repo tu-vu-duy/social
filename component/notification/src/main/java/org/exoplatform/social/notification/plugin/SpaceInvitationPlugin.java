@@ -115,4 +115,9 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
     return true;
   }
 
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    return null;
+  }
+
 }

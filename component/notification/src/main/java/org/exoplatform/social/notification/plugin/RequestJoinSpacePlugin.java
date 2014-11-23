@@ -132,4 +132,13 @@ public class RequestJoinSpacePlugin extends AbstractNotificationPlugin {
     return false;
   }
 
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    NotificationInfo notification = ctx.getNotificationInfo();
+    String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
+    Space space = Utils.getSpaceService().getSpaceById(spaceId);
+    Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, notification.getValueOwnerParameter("request_from"), true);
+    return identity.getProfile().getFullName() + " wants to join your space : " + space.getDisplayName();
+  }
+
 }

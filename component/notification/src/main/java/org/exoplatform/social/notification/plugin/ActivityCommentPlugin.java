@@ -141,6 +141,15 @@ public class ActivityCommentPlugin extends AbstractNotificationPlugin {
     }
     return true;
   }
+
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    NotificationInfo notification = ctx.getNotificationInfo();
+    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
+    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
+    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
+    return identity.getProfile().getFullName() + " comments on your activity : " + activity.getTitle();
+  }
   
   
 }

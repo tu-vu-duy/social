@@ -140,4 +140,12 @@ public class NewUserPlugin extends AbstractNotificationPlugin {
     return true;
   }
 
+  @Override
+  protected String makeUIMessage(NotificationContext ctx) {
+    NotificationInfo notification = ctx.getNotificationInfo();
+    String remoteId = notification.getValueOwnerParameter(SocialNotificationUtils.REMOTE_ID.getKey());
+    Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, remoteId, true);
+    return identity.getProfile().getFullName() + " has joined " + NotificationPluginUtils.getBrandingPortalName();
+  }
+
 }
