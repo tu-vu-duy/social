@@ -121,7 +121,7 @@ public class UIAvatarUploadContent extends UIContainer {
       uiPopup.setUIComponent(null);
       uiPopup.setRendered(false);
       if(uiPopup.getParent() instanceof PopupContainer) {
-        UIContainer container = uiPopup.getAncestorOfType(UIPortletApplication.class).findComponentById("UIChangeAvatarContainer");
+        UIContainer container = uiPopup.getAncestorOfType(UIPortletApplication.class).findComponentById("Avatar");
         if (container != null) {
           event.getRequestContext().addUIComponentToUpdateByAjax(container);
         }
