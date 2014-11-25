@@ -41,8 +41,12 @@
                 <field name="templatePath">
                   <string>war:/notification/templates/ActivityMentionPlugin.gtmpl</string>
                 </field>
+                <field name="intranetTemplatePath">
+                  <string>war:/intranet-notification/templates/ActivityMentionPlugin.gtmpl</string>
+                </field>
               </object>
             </field>
+
           </object>
         </object-param>
       </init-params>

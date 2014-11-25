@@ -162,10 +162,35 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
 
   @Override
   protected String makeUIMessage(NotificationContext ctx) {
+    
     NotificationInfo notification = ctx.getNotificationInfo();
+    String language = getLanguage(notification);
+
+    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
+    
     String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
     ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
     Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    return identity.getProfile().getFullName() + " mentions you in an activity : " + activity.getTitle();
+
+    templateContext.put("NOTIFICATION_ID", notification.getId());
+    templateContext.put("LAST_UPDATED_TIME", System.currentTimeMillis());
+    templateContext.put("USER", identity.getProfile().getFullName());
+    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
+    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
+    templateContext.put("ACTIVITY", NotificationUtils.processLinkTitle(activity.getTitle()));
+    String body = "";
+    
+    // In case of mention on a comment, we need provide the id of the activity, not of the comment
+    if (activity.isComment()) {
+      ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
+      activityId = parentActivity.getId();
+      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity_highlight_comment", activityId + "-" + activity.getId()));
+    } else {
+      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activityId));
+    }
+    body = TemplateUtils.processIntranetGroovy(templateContext);
+    
+    return body;
   }
 }
