@@ -77,8 +77,6 @@ public class UserNotificationSetting {
 
   private static final String NEVER                   = "Never";
 
-  private static final String CHECK_BOX_DEACTIVATE_ID = "checkBoxDeactivate";
-
   private final static String SELECT_BOX_PREFIX       = "SelectBox";
   
   private Locale locale = Locale.ENGLISH;
@@ -100,7 +98,6 @@ public class UserNotificationSetting {
 
     index.render(parameters());
   }
- 
   
   @Ajax
   @Resource
@@ -109,6 +106,7 @@ public class UserNotificationSetting {
     try {
       UserSetting setting = UserSetting.getInstance();
       Map<String, String> datas = parserParams(params);
+      System.out.println(datas.toString());
       for (String pluginId : datas.keySet()) {
         if (pluginId.indexOf(SELECT_BOX_PREFIX) > 0) {
           String value = datas.get(pluginId);
@@ -120,16 +118,17 @@ public class UserNotificationSetting {
           if (DAILY.equals(value)) {
             setting.addProvider(pluginId, FREQUENCY.DAILY);
           }
-        } else if (CHECK_BOX_DEACTIVATE_ID.equals(pluginId) == false) {
+        } else if (!"intranet".equals(pluginId) && pluginId.indexOf("intranet") == 0) {
+          setting.addIntranetPlugin(pluginId.replace("intranet", ""));
+        } else if (!"email".equals(pluginId) && !"intranet".equals(pluginId)) {
           setting.addProvider(pluginId, FREQUENCY.INSTANTLY);
         }
       }
-      boolean status = "on".equals(datas.get(CHECK_BOX_DEACTIVATE_ID)) == false;
-      setting.setUserId(Utils.getOwnerRemoteId()).setActive(status);
+      setting.setUserId(Utils.getOwnerRemoteId());
       //
       userSettingService.save(setting);
       data.set("ok", "true");
-      data.set("status", String.valueOf(status));
+      data.set("status", "true");
     } catch (Exception e) {
       data.set("ok", "false");
       data.set("status", e.toString());
@@ -140,46 +139,26 @@ public class UserNotificationSetting {
   
   @Ajax
   @Resource
-  public Response saveNotificationTypeSetting(String params, String typeSetting, String enable) {
+  public Response saveActiveStatus(String type, String enable) {
     JSON data = new JSON();
-    
-    try{
+    try {
       UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
-      Map<String, String> datas = parserParams(params);
-      
-      for (String pluginId : datas.keySet()) {
-        if (pluginId.indexOf(SELECT_BOX_PREFIX) > 0) {
-          String value = datas.get(pluginId);
-          pluginId = pluginId.replaceFirst(SELECT_BOX_PREFIX, "");
-          //
-          if (WEEKLY.equals(value)) {
-            setting.addProvider(pluginId, FREQUENCY.WEEKLY);
-          }
-          if (DAILY.equals(value)) {
-            setting.addProvider(pluginId, FREQUENCY.DAILY);
-          }
-        } else if (CHECK_BOX_DEACTIVATE_ID.equals(pluginId) == false) {
-          setting.addProvider(pluginId, FREQUENCY.INSTANTLY);
-        }
-      }
-      
-      
       if (enable.equals("true") || enable.equals("false")) {
-        if ("EnableGetEmail".equals(typeSetting)) {
+        if ("email".equals(type)) {
           setting.setActive(Boolean.valueOf(enable));
-        } else if ("EnableGetIntranet".equals(typeSetting)) {
+        } else if ("intranet".equals(type)) {
           setting.setIntranetActive(Boolean.valueOf(enable));
         }
+        userSettingService.save(setting);
       }
-      userSettingService.save(setting);
       data.set("ok", "true");
-      data.set("status", enable);
-    }catch(Exception e){
+      data.set("type", type);
+      data.set("enable", enable);
+    } catch (Exception e) {
       data.set("ok", "false");
       data.set("status", e.toString());
-      return new Response.Error("Exception in switching stat of provider "+typeSetting+". " + e.toString());
+      return new Response.Error("Exception in switching stat of provider " + type + ". " + e.toString());
     }
-    
     return Response.ok(data.toString()).withMimeType("application/json");
   }
   
@@ -207,63 +186,52 @@ public class UserNotificationSetting {
 
     UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
     //
-//    String checkbox = (setting.isActive() == true) ? "" : "checked";
-//    parameters.put("checkbox", checkbox);
-//    parameters.put("checkboxId", CHECK_BOX_DEACTIVATE_ID);
-    //
     List<GroupProvider> groups = providerSettingService.getGroupPlugins();
     parameters.put("groups", groups);
     //
     boolean hasActivePlugin = false;
-    for (GroupProvider group : groups) {
-      for (PluginInfo plugin : group.getProviderDatas()) {
-        if (plugin.isActive()) {
-          hasActivePlugin = true;
-          break;
-        }
-      }
-    }
-    parameters.put("hasActivePlugin", hasActivePlugin);
-    
     Map<String, String> selectBoxList = new HashMap<String, String>();
     Map<String, String> checkBoxList = new HashMap<String, String>();
     Map<String, String> intranetCheckBoxList = new HashMap<String, String>();
     
     Map<String, String> options = buildOptions(context);
+    boolean isActiveEmail = setting.isActive();
+    boolean isActiveIntranet = setting.isIntranetActive();
     
-    for (String pluginId : providerSettingService.getActivePluginIds()) {
-      selectBoxList.put(pluginId, buildSelectBox(pluginId, options, getValue(setting, pluginId)));
-      checkBoxList.put(pluginId, buildCheckBox(pluginId, isInInstantly(setting, pluginId)));
-      intranetCheckBoxList.put(pluginId, buildCheckBox(pluginId, isInIntranet(setting, pluginId)));
+    for (GroupProvider groupProvider : providerSettingService.getGroupPlugins()) {
+      for (PluginInfo info : groupProvider.getProviderDatas()) {
+        String pluginId = info.getType();
+        if (info.isActive()) {
+          selectBoxList.put(pluginId, buildSelectBox(pluginId, options, getValue(setting, pluginId)));
+          checkBoxList.put(pluginId, buildCheckBox(pluginId, setting.isInInstantly(pluginId), isActiveEmail));
+          hasActivePlugin = true;
+        }
+        if (info.isIntranetActive()) {
+          intranetCheckBoxList.put(pluginId, buildCheckBox("intranet" + pluginId, setting.isInIntranet(pluginId), isActiveIntranet));
+          hasActivePlugin = true;
+        }
+      }
     }
+    parameters.put("hasActivePlugin", hasActivePlugin);
     
     parameters.put("checkBoxs", checkBoxList);
     parameters.put("intranetCheckBoxs", intranetCheckBoxList);
     parameters.put("selectBoxs", selectBoxList);
     
-    parameters.put("enabledGetEmail", setting.isActive());
-    parameters.put("enabledGetIntranet", setting.isIntranetActive());
+    parameters.put("enabledGetEmail", isActiveEmail);
+    parameters.put("enabledGetIntranet", isActiveIntranet);
     
     return parameters;
   }
   
-  
-  private boolean isInInstantly(UserSetting setting, String pluginId) {
-    return (setting.isInInstantly(pluginId)) ? true : false;
-  }
-
-  private boolean isInIntranet(UserSetting setting, String pluginId) {
-    return (setting.isInIntranet(pluginId)) ? true : false;
+  private String makeSelectBoxId(String pluginId) {
+    return new StringBuffer(pluginId).append(SELECT_BOX_PREFIX).toString();
   }
   
-  private String makeSelectBoxId(String providerId) {
-    return new StringBuffer(providerId).append(SELECT_BOX_PREFIX).toString();
-  }
-  
-  private String getValue(UserSetting setting, String providerId) {
-    if (setting.isInWeekly(providerId)) {
+  private String getValue(UserSetting setting, String pluginId) {
+    if (setting.isInWeekly(pluginId)) {
       return WEEKLY;
-    } else if (setting.isInDaily(providerId)) {
+    } else if (setting.isInDaily(pluginId)) {
       return DAILY;
     } else {
       return NEVER;
@@ -278,10 +246,11 @@ public class UserNotificationSetting {
     return options;
   }
   
-  private String buildCheckBox(String name, boolean isChecked) {
+  private String buildCheckBox(String name, boolean isChecked, boolean isDisabled) {
     StringBuffer buffer = new StringBuffer("<span class=\"uiCheckbox\">");
-    buffer.append(("<input type=\"checkbox\" class=\"checkbox\" "))
-          .append((isChecked == true) ? "checked " : "")
+    buffer.append("<input type=\"checkbox\" class=\"checkbox\" ")
+          .append((isChecked == true) ? "checked=\"checked\" " : "")
+          .append((isDisabled == true) ? "disabled " : "")
           .append("name=\"").append(name).append("\" id=\"").append(name).append("\" />")
           .append("<span></span></span>");
     return buffer.toString();
