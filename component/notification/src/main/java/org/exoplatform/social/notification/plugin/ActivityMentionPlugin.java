@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +38,7 @@ import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.notification.LinkProviderUtils;
 import org.exoplatform.social.notification.Utils;
+import org.exoplatform.webui.utils.TimeConvertUtils;
 
 public class ActivityMentionPlugin extends AbstractNotificationPlugin {
   
@@ -167,19 +169,17 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
     String language = getLanguage(notification);
 
     TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
     
     String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
     ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
     Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
 
     templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", System.currentTimeMillis());
+    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(activity.getUpdated(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
     templateContext.put("USER", identity.getProfile().getFullName());
     templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
     templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
     templateContext.put("ACTIVITY", NotificationUtils.processLinkTitle(activity.getTitle()));
-    String body = "";
     
     // In case of mention on a comment, we need provide the id of the activity, not of the comment
     if (activity.isComment()) {
@@ -189,8 +189,6 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
     } else {
       templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activityId));
     }
-    body = TemplateUtils.processIntranetGroovy(templateContext);
-    
-    return body;
+    return TemplateUtils.processIntranetGroovy(templateContext);
   }
 }
