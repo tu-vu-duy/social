@@ -17,6 +17,7 @@
 package org.exoplatform.social.portlet.userNotification;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +35,7 @@ import juzu.impl.common.JSON;
 import juzu.request.RenderContext;
 import juzu.template.Template;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.exoplatform.commons.api.notification.model.GroupProvider;
 import org.exoplatform.commons.api.notification.model.PluginInfo;
 import org.exoplatform.commons.api.notification.model.UserSetting;
@@ -104,9 +106,20 @@ public class UserNotificationSetting {
   public Response saveSetting(String params) {
     JSON data = new JSON();
     try {
-      UserSetting setting = UserSetting.getInstance();
+      
       Map<String, String> datas = parserParams(params);
-      System.out.println(datas.toString());
+      boolean isEmailActive = "on".equals((String)datas.get("email"));
+      boolean isIntranetActive = "on".equals((String)datas.get("intranet"));
+      
+      UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
+      if (!isEmailActive && !isIntranetActive) {
+        return Response.ok(data.toString()).withMimeType("application/json");
+      } else if (isIntranetActive) {
+        setting.setIntranetPlugins(new ArrayList<String>());
+      } else if (isEmailActive) {
+        setting.setInstantlyProviders(new ArrayList<String>());
+      }
+      
       for (String pluginId : datas.keySet()) {
         if (pluginId.indexOf(SELECT_BOX_PREFIX) > 0) {
           String value = datas.get(pluginId);
@@ -124,7 +137,7 @@ public class UserNotificationSetting {
           setting.addProvider(pluginId, FREQUENCY.INSTANTLY);
         }
       }
-      setting.setUserId(Utils.getOwnerRemoteId());
+//      setting.setUserId(Utils.getOwnerRemoteId());
       //
       userSettingService.save(setting);
       data.set("ok", "true");
@@ -202,7 +215,7 @@ public class UserNotificationSetting {
       for (PluginInfo info : groupProvider.getProviderDatas()) {
         String pluginId = info.getType();
         if (info.isActive()) {
-          selectBoxList.put(pluginId, buildSelectBox(pluginId, options, getValue(setting, pluginId)));
+          selectBoxList.put(pluginId, buildSelectBox(pluginId, options, getValue(setting, pluginId), isActiveEmail));
           checkBoxList.put(pluginId, buildCheckBox(pluginId, setting.isInInstantly(pluginId), isActiveEmail));
           hasActivePlugin = true;
         }
@@ -246,21 +259,21 @@ public class UserNotificationSetting {
     return options;
   }
   
-  private String buildCheckBox(String name, boolean isChecked, boolean isDisabled) {
+  private String buildCheckBox(String name, boolean isChecked, boolean isActive) {
     StringBuffer buffer = new StringBuffer("<span class=\"uiCheckbox\">");
     buffer.append("<input type=\"checkbox\" class=\"checkbox\" ")
           .append((isChecked == true) ? "checked=\"checked\" " : "")
-          .append((isDisabled == true) ? "disabled " : "")
+          .append((isActive == false) ? "disabled " : "")
           .append("name=\"").append(name).append("\" id=\"").append(name).append("\" />")
           .append("<span></span></span>");
     return buffer.toString();
   }
 
-  private String buildSelectBox(String name, Map<String, String> options, String selectedId) {
+  private String buildSelectBox(String name, Map<String, String> options, String selectedId, boolean isActive) {
     String selected = "";
     String id = makeSelectBoxId(name);
     StringBuffer buffer = new StringBuffer("<span class=\"uiSelectbox\">");
-    buffer.append("<select name=\"").append(id).append("\" id=\"").append(id).append("\" class=\"selectbox\">");
+    buffer.append("<select name=\"").append(id).append("\" id=\"").append(id).append("\"").append((isActive == false) ? " disabled " : "").append(" class=\"selectbox\">");
     for (String key : options.keySet()) {
       selected = (key.equals(selectedId) == true) ? " selected=\"selected\" " : "";
       buffer.append("<option value=\"").append(key).append("\" class=\"option\"").append(selected).append(">").append(options.get(key)).append("</option>");
