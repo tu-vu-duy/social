@@ -16,6 +16,7 @@
  */
 package org.exoplatform.social.service.rest;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,7 +73,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
   @GET
   @Path("confirmInvitationToConnect/{senderId}/{receiverId}")
   public void confirmInvitationToConnect(@PathParam("senderId") String senderId,
-                                              @PathParam("receiverId") String receiverId) throws Exception {
+                                           @PathParam("receiverId") String receiverId) throws Exception {
     //update notification
     NotificationInfo info = new NotificationInfo();
     info.key(new NotificationKey("RelationshipReceivedRequestPlugin"));
@@ -278,6 +279,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
       return;
     }
     try {
+      notification.setLastModifiedDate(Calendar.getInstance());
       nCtx.setNotificationInfo(notification);
       String message = plugin.buildUIMessage(nCtx);
       JsonObject jsonObject = new JsonObject();
