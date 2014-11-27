@@ -16,8 +16,6 @@
  */
 package org.exoplatform.social.service.rest;
 
-import static org.exoplatform.social.service.rest.RestChecker.checkAuthenticatedRequest;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +37,7 @@ import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.services.rest.resource.ResourceContainer;
+import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.manager.IdentityManager;
@@ -61,29 +60,19 @@ public class IntranetNotificationRestService implements ResourceContainer {
   private SpaceService spaceService;
 
   /**
-   * Processes the "Accept the invitation to connect" action between 2 users and add new notification
+   * Processes the "Accept the invitation to connect" action between 2 users and update notification.
    * 
    * @param senderId The sender's remote Id.
    * @param receiverId The receiver's remote Id.
    * @authentication
    * @request
    * GET: http://localhost:8080/rest/social/intranet-notifications/confirmInvitationToConnect/john/root
-   * @return Redirects to the sender's activity stream.
    * @throws Exception
    */
   @GET
   @Path("confirmInvitationToConnect/{senderId}/{receiverId}")
-  public Response confirmInvitationToConnect(@PathParam("senderId") String senderId,
+  public void confirmInvitationToConnect(@PathParam("senderId") String senderId,
                                               @PathParam("receiverId") String receiverId) throws Exception {
-    checkAuthenticatedRequest();
-    
-    Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true); 
-    Identity receiver = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, receiverId, true);
-    if (sender == null || receiver == null) {
-      throw new WebApplicationException(Response.Status.BAD_REQUEST);
-    }
-    getRelationshipManager().confirm(sender, receiver);
-    
     //update notification
     NotificationInfo info = new NotificationInfo();
     info.key(new NotificationKey("RelationshipReceivedRequestPlugin"));
@@ -94,132 +83,143 @@ public class IntranetNotificationRestService implements ResourceContainer {
     ownerParameter.put("status", "accepted");
     info.setOwnerParameter(ownerParameter);
     sendBackNotif(info);
-  
-   return Response.ok().build();
+
+    //
+    Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true); 
+    Identity receiver = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, receiverId, true);
+    if (sender == null || receiver == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getRelationshipManager().confirm(sender, receiver);
   }
   
+  /**
+   * Processes the "Deny the invitation to connect" action between 2 users
+   * 
+   * @param senderId The sender's remote Id.
+   * @param receiverId The receiver's remote Id.
+   * @authentication
+   * @request
+   * GET: localhost:8080/rest/social/intranet-notifications/ignoreInvitationToConnect/john/root
+   * @throws Exception
+   */
   @GET
   @Path("ignoreInvitationToConnect/{senderId}/{receiverId}")
-  public Response ignoreInvitationToConnect(@PathParam("senderId") String senderId,
+  public void ignoreInvitationToConnect(@PathParam("senderId") String senderId,
                                              @PathParam("receiverId") String receiverId) throws Exception {
-    checkAuthenticatedRequest();
-
     Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true);
     Identity receiver = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, receiverId, true);
     if (sender == null || receiver == null) {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
     getRelationshipManager().deny(sender, receiver);
-    
-    //delete notification
-
-    return Response.ok().build();
-  }
-  
-  @GET
-  @Path("acceptInvitationToJoinSpace/{spaceId}/{userId}")
-  public Response acceptInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
-                                              @PathParam("userId") String userId) throws Exception {
-    checkAuthenticatedRequest();
-
-    Space space = getSpaceService().getSpaceById(spaceId);
-    if (space == null) {
-      throw new WebApplicationException(Response.Status.BAD_REQUEST);
-    }
-    getSpaceService().addMember(space, userId);
-    
-    //update notification
-
-    return Response.ok().build();
   }
   
   /**
-   * Processes the "Deny the invitation to join a space" action, then redirects to the page of all spaces.
-   * A message informing that the invitee has denied to join the space will be displayed.
+   * Processes the "Accept the invitation to join a space" action and update notification.
    * 
    * @param userId The invitee's remote Id.
    * @param spaceId Id of the space.
    * @authentication
    * @request
-   * GET: localhost:8080/rest/social/notifications/ignoreInvitationToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
-   * @return Redirects to the page of all spaces and displays a message.
+   * GET: localhost:8080/rest/social/intranet-notifications/acceptInvitationToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
+   * @throws Exception
+   */
+  @GET
+  @Path("acceptInvitationToJoinSpace/{spaceId}/{userId}")
+  public void acceptInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
+                                               @PathParam("userId") String userId) throws Exception {
+    //update notification
+    NotificationInfo info = new NotificationInfo();
+    info.setTo(userId);
+    info.key(new NotificationKey("SpaceInvitationPlugin"));
+    Map<String, String> ownerParameter = new HashMap<String, String>();
+    ownerParameter.put("spaceId", spaceId);
+    ownerParameter.put("status", "accepted");
+    info.setOwnerParameter(ownerParameter);
+    sendBackNotif(info);
+    
+    //
+    Space space = getSpaceService().getSpaceById(spaceId);
+    if (space == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getSpaceService().addMember(space, userId);
+  }
+  
+  /**
+   * Processes the "Deny the invitation to join a space" action.
+   * 
+   * @param userId The invitee's remote Id.
+   * @param spaceId Id of the space.
+   * @authentication
+   * @request
+   * GET: localhost:8080/rest/social/intranet-notifications/ignoreInvitationToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
    * @throws Exception
    */
   @GET
   @Path("ignoreInvitationToJoinSpace/{spaceId}/{userId}")
-  public Response ignoreInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
+  public void ignoreInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
                                               @PathParam("userId") String userId) throws Exception {
-    checkAuthenticatedRequest();
-
     Space space = getSpaceService().getSpaceById(spaceId);
     if (space == null) {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
     getSpaceService().removeInvitedUser(space, userId);
-    
-    //remove notification
-    
-    return Response.ok().build();
   }
   
   /**
-   * Adds a member to a space, then redirects to the space's members page. 
-   * A message informing the added user is already member of the space or not will be displayed.
-   * This action is only for the space manager. 
+   * Adds a member to a space and update notification.
    * 
    * @param userId The remote Id of the user who requests for joining the space.
    * @param spaceId Id of the space.
    * @authentication
    * @request
-   * GET: localhost:8080/rest/social/notifications/validateRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
-   * @return Redirects to the space's members page and displays the message.
+   * GET: localhost:8080/rest/social/intranet-notifications/validateRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
    * @throws Exception
    */
   @GET
   @Path("validateRequestToJoinSpace/{spaceId}/{userId}")
-  public Response validateRequestToJoinSpace(@PathParam("spaceId") String spaceId,
-                                             @PathParam("userId") String userId) throws Exception {
-    checkAuthenticatedRequest();
-
-    Space space = getSpaceService().getSpaceById(spaceId);
+  public void validateRequestToJoinSpace(@PathParam("spaceId") String spaceId,
+                                              @PathParam("userId") String userId) throws Exception {
+    //update notification
+    NotificationInfo info = new NotificationInfo();
+    info.setTo(ConversationState.getCurrent().getIdentity().getUserId());
+    info.key(new NotificationKey("RequestJoinSpacePlugin"));
+    Map<String, String> ownerParameter = new HashMap<String, String>();
+    ownerParameter.put("spaceId", spaceId);
+    ownerParameter.put("request_from", userId);
+    ownerParameter.put("status", "accepted");
+    info.setOwnerParameter(ownerParameter);
+    sendBackNotif(info);
     
+    //
+    Space space = getSpaceService().getSpaceById(spaceId);
     if (space == null) {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
     getSpaceService().addMember(space, userId);
-    
-    //update notification
-
-    return Response.ok().build();
   }
   
   /**
-   * Refuses a user's request for joining a space, then redirects to 
-   * the space's members page. This action is only for the space manager. 
+   * Refuses a user's request for joining a space. 
    * 
    * @param userId The remote Id of the user who requests for joining the space.
    * @param spaceId Id of the space.
    * @authentication
    * @request
-   * GET: localhost:8080/rest/social/notifications/refuseRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
-   * @return Redirects to the space's members page.
+   * GET: localhost:8080/rest/social/intranet-notifications/refuseRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
    * @throws Exception
    */
   @GET
   @Path("refuseRequestToJoinSpace/{spaceId}/{userId}")
-  public Response refuseRequestToJoinSpace(@PathParam("spaceId") String spaceId,
+  public void refuseRequestToJoinSpace(@PathParam("spaceId") String spaceId,
                                            @PathParam("userId") String userId) throws Exception {
-    checkAuthenticatedRequest();
-
     Space space = getSpaceService().getSpaceById(spaceId);
     if (space == null) {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
     getSpaceService().removePendingUser(space, userId);
-    
-    //remove notification
-
-    return Response.ok().build();
   }
   
   /**

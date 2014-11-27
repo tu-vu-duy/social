@@ -129,9 +129,11 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
     String language = getLanguage(notification);
     TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
 
+    String status = notification.getValueOwnerParameter("status");
     String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
     Space space = Utils.getSpaceService().getSpaceById(spaceId);
     templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
+    templateContext.put("STATUS", status != null && status.equals("accepted") ? "ACCEPTED" : "PENDING");
     templateContext.put("NOTIFICATION_ID", notification.getId());
     templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
     templateContext.put("SPACE", space.getDisplayName());
