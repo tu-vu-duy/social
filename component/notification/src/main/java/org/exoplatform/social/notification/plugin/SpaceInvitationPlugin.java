@@ -131,9 +131,9 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
 
     String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
     Space space = Utils.getSpaceService().getSpaceById(spaceId);
-    
+    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
     templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(TimeConvertUtils.getGreenwichMeanTime().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
+    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
     templateContext.put("SPACE", space.getDisplayName());
     templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space", space.getId()));
     templateContext.put("SPACE_AVATAR", LinkProviderUtils.getSpaceAvatarUrl(space));

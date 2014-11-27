@@ -149,9 +149,9 @@ public class RequestJoinSpacePlugin extends AbstractNotificationPlugin {
     Space space = Utils.getSpaceService().getSpaceById(spaceId);
     Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, notification.getValueOwnerParameter("request_from"), true);
     Profile userProfile = identity.getProfile();
-    
+    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
     templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(TimeConvertUtils.getGreenwichMeanTime().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
+    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
     templateContext.put("SPACE", space.getDisplayName());
     templateContext.put("USER", userProfile.getFullName());
     templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space_members", space.getId()));

@@ -138,11 +138,10 @@ public class RelationshipReceivedRequestPlugin extends AbstractNotificationPlugi
     String toUser = notification.getTo();
     Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, sender, true);
     Profile userProfile = identity.getProfile();
-    
-    templateContext.put("READ", "unread");
+    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
     templateContext.put("NOTIFICATION_ID", notification.getId());
     templateContext.put("STATUS", status != null && status.equals("accepted") ? "ACCEPTED" : "PENDING");
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(TimeConvertUtils.getGreenwichMeanTime().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
+    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
     templateContext.put("PORTAL_HOME", NotificationUtils.getPortalHome(NotificationPluginUtils.getBrandingPortalName()));
     templateContext.put("USER", userProfile.getFullName());
     templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
