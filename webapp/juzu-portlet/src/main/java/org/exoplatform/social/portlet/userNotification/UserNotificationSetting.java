@@ -35,7 +35,6 @@ import juzu.impl.common.JSON;
 import juzu.request.RenderContext;
 import juzu.template.Template;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.exoplatform.commons.api.notification.model.GroupProvider;
 import org.exoplatform.commons.api.notification.model.PluginInfo;
 import org.exoplatform.commons.api.notification.model.UserSetting;
