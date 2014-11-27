@@ -18,6 +18,9 @@ package org.exoplatform.social.service.rest;
 
 import static org.exoplatform.social.service.rest.RestChecker.checkAuthenticatedRequest;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -25,6 +28,13 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.exoplatform.commons.api.notification.NotificationContext;
+import org.exoplatform.commons.api.notification.model.NotificationInfo;
+import org.exoplatform.commons.api.notification.model.NotificationKey;
+import org.exoplatform.commons.api.notification.plugin.AbstractNotificationPlugin;
+import org.exoplatform.commons.notification.impl.NotificationContextImpl;
+import org.exoplatform.commons.notification.net.WebSocketBootstrap;
+import org.exoplatform.commons.notification.net.WebSocketServer;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
@@ -33,7 +43,9 @@ import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
+import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
+import org.vertx.java.core.json.JsonObject;
 
 /**
  * Created by The eXo Platform SAS
@@ -62,7 +74,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
   @GET
   @Path("confirmInvitationToConnect/{senderId}/{receiverId}")
   public Response confirmInvitationToConnect(@PathParam("senderId") String senderId,
-                                             @PathParam("receiverId") String receiverId) throws Exception {
+                                              @PathParam("receiverId") String receiverId) throws Exception {
     checkAuthenticatedRequest();
     
     Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true); 
@@ -72,8 +84,16 @@ public class IntranetNotificationRestService implements ResourceContainer {
     }
     getRelationshipManager().confirm(sender, receiver);
     
-    //update or delete notification
-    
+    //update notification
+    NotificationInfo info = new NotificationInfo();
+    info.key(new NotificationKey("RelationshipReceivedRequestPlugin"));
+    info.setFrom(senderId);
+    info.setTo(receiverId);
+    Map<String, String> ownerParameter = new HashMap<String, String>();
+    ownerParameter.put("sender", senderId);
+    ownerParameter.put("status", "accepted");
+    info.setOwnerParameter(ownerParameter);
+    sendBackNotif(info);
   
    return Response.ok().build();
   }
@@ -81,7 +101,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
   @GET
   @Path("ignoreInvitationToConnect/{senderId}/{receiverId}")
   public Response ignoreInvitationToConnect(@PathParam("senderId") String senderId,
-                                            @PathParam("receiverId") String receiverId) throws Exception {
+                                             @PathParam("receiverId") String receiverId) throws Exception {
     checkAuthenticatedRequest();
 
     Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true);
@@ -92,6 +112,112 @@ public class IntranetNotificationRestService implements ResourceContainer {
     getRelationshipManager().deny(sender, receiver);
     
     //delete notification
+
+    return Response.ok().build();
+  }
+  
+  @GET
+  @Path("acceptInvitationToJoinSpace/{spaceId}/{userId}")
+  public Response acceptInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
+                                              @PathParam("userId") String userId) throws Exception {
+    checkAuthenticatedRequest();
+
+    Space space = getSpaceService().getSpaceById(spaceId);
+    if (space == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getSpaceService().addMember(space, userId);
+    
+    //update notification
+
+    return Response.ok().build();
+  }
+  
+  /**
+   * Processes the "Deny the invitation to join a space" action, then redirects to the page of all spaces.
+   * A message informing that the invitee has denied to join the space will be displayed.
+   * 
+   * @param userId The invitee's remote Id.
+   * @param spaceId Id of the space.
+   * @authentication
+   * @request
+   * GET: localhost:8080/rest/social/notifications/ignoreInvitationToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
+   * @return Redirects to the page of all spaces and displays a message.
+   * @throws Exception
+   */
+  @GET
+  @Path("ignoreInvitationToJoinSpace/{spaceId}/{userId}")
+  public Response ignoreInvitationToJoinSpace(@PathParam("spaceId") String spaceId,
+                                              @PathParam("userId") String userId) throws Exception {
+    checkAuthenticatedRequest();
+
+    Space space = getSpaceService().getSpaceById(spaceId);
+    if (space == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getSpaceService().removeInvitedUser(space, userId);
+    
+    //remove notification
+    
+    return Response.ok().build();
+  }
+  
+  /**
+   * Adds a member to a space, then redirects to the space's members page. 
+   * A message informing the added user is already member of the space or not will be displayed.
+   * This action is only for the space manager. 
+   * 
+   * @param userId The remote Id of the user who requests for joining the space.
+   * @param spaceId Id of the space.
+   * @authentication
+   * @request
+   * GET: localhost:8080/rest/social/notifications/validateRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
+   * @return Redirects to the space's members page and displays the message.
+   * @throws Exception
+   */
+  @GET
+  @Path("validateRequestToJoinSpace/{spaceId}/{userId}")
+  public Response validateRequestToJoinSpace(@PathParam("spaceId") String spaceId,
+                                             @PathParam("userId") String userId) throws Exception {
+    checkAuthenticatedRequest();
+
+    Space space = getSpaceService().getSpaceById(spaceId);
+    
+    if (space == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getSpaceService().addMember(space, userId);
+    
+    //update notification
+
+    return Response.ok().build();
+  }
+  
+  /**
+   * Refuses a user's request for joining a space, then redirects to 
+   * the space's members page. This action is only for the space manager. 
+   * 
+   * @param userId The remote Id of the user who requests for joining the space.
+   * @param spaceId Id of the space.
+   * @authentication
+   * @request
+   * GET: localhost:8080/rest/social/notifications/refuseRequestToJoinSpace/e1cacf067f0001015ac312536462fc6b/john
+   * @return Redirects to the space's members page.
+   * @throws Exception
+   */
+  @GET
+  @Path("refuseRequestToJoinSpace/{spaceId}/{userId}")
+  public Response refuseRequestToJoinSpace(@PathParam("spaceId") String spaceId,
+                                           @PathParam("userId") String userId) throws Exception {
+    checkAuthenticatedRequest();
+
+    Space space = getSpaceService().getSpaceById(spaceId);
+    if (space == null) {
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    }
+    getSpaceService().removePendingUser(space, userId);
+    
+    //remove notification
 
     return Response.ok().build();
   }
@@ -143,5 +269,22 @@ public class IntranetNotificationRestService implements ResourceContainer {
       throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
     }
     return exoContainer;
+  }
+  
+  private void sendBackNotif(NotificationInfo notification) {
+    NotificationContext nCtx = NotificationContextImpl.cloneInstance();
+    AbstractNotificationPlugin plugin = nCtx.getPluginContainer().getPlugin(notification.getKey());
+    if (plugin == null) {
+      return;
+    }
+    try {
+      nCtx.setNotificationInfo(notification);
+      String message = plugin.buildUIMessage(nCtx);
+      JsonObject jsonObject = new JsonObject();
+      jsonObject.putString("message", message);
+      WebSocketBootstrap.sendMessage(WebSocketServer.NOTIFICATION_WEB_IDENTIFIER, notification.getTo(), jsonObject.encode());
+    } catch (Exception e) {
+      System.out.println("error : " + e.getMessage());
+    }
   }
 }

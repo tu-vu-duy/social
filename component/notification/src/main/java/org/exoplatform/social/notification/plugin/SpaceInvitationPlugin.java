@@ -37,6 +37,11 @@ import org.exoplatform.social.notification.Utils;
 import org.exoplatform.webui.utils.TimeConvertUtils;
 
 public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
+  
+  private static final String ACCEPT_SPACE_INVITATION = "social/intranet-notification/acceptInvitationToJoinSpace";
+
+  private static final String REFUSE_SPACE_INVITATION = "social/intranet-notification/ignoreInvitationToJoinSpace";
+  
   public static final String ID = "SpaceInvitationPlugin";
 
   public SpaceInvitationPlugin(InitParams initParams) {
@@ -132,8 +137,8 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
     templateContext.put("SPACE", space.getDisplayName());
     templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space", space.getId()));
     templateContext.put("SPACE_AVATAR", LinkProviderUtils.getSpaceAvatarUrl(space));
-    templateContext.put("ACCEPT_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getAcceptInvitationToJoinSpaceUrl(space.getId(), notification.getTo()));
-    templateContext.put("REFUSE_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getIgnoreInvitationToJoinSpaceUrl(space.getId(), notification.getTo()));
+    templateContext.put("ACCEPT_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getRestUrl(ACCEPT_SPACE_INVITATION, space.getId(), notification.getTo()));
+    templateContext.put("REFUSE_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getRestUrl(REFUSE_SPACE_INVITATION, space.getId(), notification.getTo()));
     return TemplateUtils.processIntranetGroovy(templateContext);
     
   }
