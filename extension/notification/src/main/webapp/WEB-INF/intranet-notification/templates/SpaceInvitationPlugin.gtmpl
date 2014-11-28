@@ -9,13 +9,15 @@
        String actions = (STATUS == "ACCEPTED") ? _ctx.appRes("Notification.intranet.message.accept.SpaceInvitationPlugin", spaceUrl)
                                               : _ctx.appRes("Notification.intranet.message.SpaceInvitationPlugin", spaceUrl);
       %>
-      <div class="contentSmall" data-link="">
-        <div class="status"><%=action%> <span class="lastUpdatedTime">$LAST_UPDATED_TIME</span></div>
+      <div class="contentSmall" data-link="$SPACE_URL">
+        <div class="status"><%=actions%> <span class="lastUpdatedTime">$LAST_UPDATED_TIME</span></div>
         <div class="content">
+        <% if (STATUS != "ACCEPTED") { %>
           <div class="confirm">
             <a class="btn btn-mini btn-primary remove-item" data-rest="$ACCEPT_SPACE_INVITATION_ACTION_URL" href="javascript:void(0)"><%=_ctx.appRes("Notification.label.Accept")%></a>
             <a class="btn btn-mini remove-item" data-rest="$REFUSE_SPACE_INVITATION_ACTION_URL" href="javascript:void(0)"><%=_ctx.appRes("Notification.label.Refuse")%></a>
           </div>
+        <% } %>
         </div>
       </div>
     </div>
