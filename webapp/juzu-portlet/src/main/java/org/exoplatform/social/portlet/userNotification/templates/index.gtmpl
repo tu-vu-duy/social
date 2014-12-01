@@ -129,12 +129,12 @@
 						</td>
 						<td class="center email">
 						<% if(plugin.isChannelActive(emailChannel)) { %>
-							${emailCheckBoxList.get(emailChannel + pluginId)}
+							${emailCheckBoxList.get(pluginId)}
 						<% } %>
 						</td>
 						<td class="center email">
 						<% if(plugin.isChannelActive(emailChannel)) { %>
-							${selectBoxs.get(emailChannel + pluginId)}
+							${emailSelectBoxList.get(pluginId)}
 						<% } %>
 						</td>
 						<%

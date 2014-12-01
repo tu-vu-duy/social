@@ -29,13 +29,16 @@ import java.util.Set;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.POST;
 
 import juzu.Path;
 import juzu.Resource;
 import juzu.Response;
 import juzu.View;
 import juzu.impl.common.JSON;
+import juzu.impl.request.Request;
 import juzu.request.RenderContext;
+import juzu.request.RequestContext;
 import juzu.template.Template;
 
 import org.exoplatform.commons.api.notification.model.GroupProvider;
@@ -55,7 +58,6 @@ import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
-import org.exoplatform.social.webui.Utils;
 import org.exoplatform.web.application.JavascriptManager;
 import org.exoplatform.webui.application.WebuiRequestContext;
 
@@ -106,6 +108,7 @@ public class UserNotificationSetting {
   }
   
   @Ajax
+  @POST
   @Resource
   public Response saveSetting(String params) {
     JSON data = new JSON();
@@ -113,7 +116,7 @@ public class UserNotificationSetting {
       Map<String, String> datas = parserParams(params);
       Set<String> paramsName = datas.keySet();
       Set<String> channels = new HashSet<String>();
-      UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
+      UserSetting setting = userSettingService.get(getRemoteUser());
       for (String channel : paramsName) {
         if (channel.startsWith(CHANNEL_PREFIX) && "on".equals((String) datas.get(channel))) {
           String channelId = channel.replaceFirst(CHANNEL_PREFIX, "");
@@ -150,6 +153,7 @@ public class UserNotificationSetting {
       data.set("ok", "true");
       data.set("status", "true");
     } catch (Exception e) {
+      LOG.error("Failed to save user settings: ", e);
       data.set("ok", "false");
       data.set("status", e.toString());
     }
@@ -159,25 +163,25 @@ public class UserNotificationSetting {
   
   @Ajax
   @Resource
-  public Response saveActiveStatus(String type, String enable) {
+  public Response saveActiveStatus(String channelId, String enable) {
     JSON data = new JSON();
     try {
-      UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
+      UserSetting setting = userSettingService.get(getRemoteUser());
       if (enable.equals("true") || enable.equals("false")) {
         if(enable.equals("true")) {
-          setting.setChannelActive(type);
+          setting.setChannelActive(channelId);
         } else {
-          setting.removeChannelActive(type);
+          setting.removeChannelActive(channelId);
         }
         userSettingService.save(setting);
       }
       data.set("ok", "true");
-      data.set("type", type);
+      data.set("type", channelId);
       data.set("enable", enable);
     } catch (Exception e) {
       data.set("ok", "false");
       data.set("status", e.toString());
-      return new Response.Error("Exception in switching stat of provider " + type + ". " + e.toString());
+      return new Response.Error("Exception in switching stat of provider " + channelId + ". " + e.toString());
     }
     return Response.ok(data.toString()).withMimeType("application/json");
   }
@@ -188,12 +192,17 @@ public class UserNotificationSetting {
     try {
       UserSetting setting = UserSetting.getDefaultInstance();
       //
-      userSettingService.save(setting.setUserId(Utils.getOwnerRemoteId()));
+      userSettingService.save(setting.setUserId(getRemoteUser()));
     } catch (Exception e) {
       return new Response.Error("Error to save default notification user setting" + e.toString());
     }
     
     return index.ok(parameters()).withMimeType("text/html");
+  }
+  
+  private String getRemoteUser() {
+    RequestContext requestContext = Request.getCurrent().getContext();
+    return requestContext.getSecurityContext().getRemoteUser();
   }
 
   private Map<String, Object> parameters() {
@@ -204,7 +213,7 @@ public class UserNotificationSetting {
     Context context = new Context(bundle);
     parameters.put("_ctx", context);
 
-    UserSetting setting = userSettingService.get(Utils.getOwnerRemoteId());
+    UserSetting setting = userSettingService.get(getRemoteUser());
     //
     List<GroupProvider> groups = providerSettingService.getGroupPlugins();
     parameters.put("groups", groups);
@@ -230,7 +239,7 @@ public class UserNotificationSetting {
               emailCheckBoxList.put(pluginId, buildCheckBox(channelId + pluginId, setting.isInInstantly(pluginId), setting.isChannelActive(channelId)));
               hasActivePlugin = true;
             } else {
-              channelCheckBoxList.put(channelId + pluginId, buildCheckBox(channelId + pluginId, setting.isInInstantly(pluginId), setting.isChannelActive(channelId)));
+              channelCheckBoxList.put(channelId + pluginId, buildCheckBox(channelId + pluginId, setting.isInChannel(channelId, pluginId), setting.isChannelActive(channelId)));
               hasActivePlugin = true;
             }
           }

@@ -78,11 +78,11 @@
         }
       });
     },
-    switchStatus : function(saveType, isEnable) {
+    switchStatus : function(channelId, isEnable) {
       $(Notification.parentId).jzAjax({   
   	    url : "UserNotificationSetting.saveActiveStatus()",
   	    data : {
-  	      "type" : saveType,
+  	      "channelId" : channelId,
   	      "enable" : isEnable
   	    },
   	    success : function(data) {
