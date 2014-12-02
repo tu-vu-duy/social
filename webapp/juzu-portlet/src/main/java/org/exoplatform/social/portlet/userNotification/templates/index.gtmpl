@@ -58,7 +58,7 @@
 						<td class="clearfix">
 							<div class="pull-left" style="padding-left: 5px">${_ctx.appRes("UINotification.label." + channel)}</div>
 							<div class="inputContainer pull-left" style="width: 60px;">
-								<input type="checkbox" class="iphoneStyle yesno staus-${enabled}" ${(enabled) ? "checked=\"checked\"" : "" } name="${channel}">
+								<input type="checkbox" class="iphoneStyle yesno staus-${enabled}" ${(enabled) ? "checked=\"checked\"" : "" } name="channel${channel}">
 							</div>
 						</td>
 						<%

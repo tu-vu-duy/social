@@ -96,17 +96,15 @@ public class UserNotificationSetting {
       redirectToHomePage();
       return;
     }
-    
     if (renderContext != null) {
       locale = renderContext.getUserContext().getLocale();
     }
     if (bundle == null) {
       bundle = renderContext.getApplicationContext().resolveBundle(locale);
     }
-
     index.render(parameters());
   }
-  
+
   @Ajax
   @POST
   @Resource
@@ -121,7 +119,7 @@ public class UserNotificationSetting {
         if (channel.startsWith(CHANNEL_PREFIX) && "on".equals((String) datas.get(channel))) {
           String channelId = channel.replaceFirst(CHANNEL_PREFIX, "");
           channels.add(channelId);
-          setting.setChannelPlugins(channelId, new ArrayList<String>());
+          setting.setChannelActive(channelId);
         }
       }
       
@@ -157,7 +155,6 @@ public class UserNotificationSetting {
       data.set("ok", "false");
       data.set("status", e.toString());
     }
-   
     return Response.ok(data.toString()).withMimeType("application/json");
   }
   
