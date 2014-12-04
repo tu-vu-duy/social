@@ -22,23 +22,17 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 import org.exoplatform.commons.api.notification.NotificationContext;
-import org.exoplatform.commons.api.notification.model.MessageInfo;
 import org.exoplatform.commons.api.notification.model.NotificationInfo;
 import org.exoplatform.commons.api.notification.plugin.AbstractNotificationPlugin;
 import org.exoplatform.commons.api.notification.service.template.TemplateContext;
-import org.exoplatform.commons.notification.NotificationUtils;
-import org.exoplatform.commons.notification.template.TemplateUtils;
 import org.exoplatform.container.xml.InitParams;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.identity.model.Identity;
-import org.exoplatform.social.notification.LinkProviderUtils;
 import org.exoplatform.social.notification.Utils;
-import org.exoplatform.webui.utils.TimeConvertUtils;
 
 public class ActivityMentionPlugin extends AbstractNotificationPlugin {
   
@@ -69,44 +63,6 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
            .with("poster", Utils.getUserId(activity.getPosterId()))
            .with(SocialNotificationUtils.ACTIVITY_ID.getKey(), activity.getId())
            .end();
-  }
-
-  @Override
-  public MessageInfo makeMessage(NotificationContext ctx) {
-    MessageInfo messageInfo = new MessageInfo();
-    
-    NotificationInfo notification = ctx.getNotificationInfo();
-    String language = getLanguage(notification);
-
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
-    
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-
-    templateContext.put("USER", identity.getProfile().getFullName());
-    String subject = TemplateUtils.processSubject(templateContext);
-    
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    String body = "";
-    
-    // In case of mention on a comment, we need provide the id of the activity, not of the comment
-    if (activity.isComment()) {
-      ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
-      activityId = parentActivity.getId();
-      templateContext.put("REPLY_ACTION_URL", LinkProviderUtils.getRedirectUrl("reply_activity_highlight_comment", activityId + "-" + activity.getId()));
-      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity_highlight_comment", activityId + "-" + activity.getId()));
-      templateContext.put("ACTIVITY", NotificationUtils.processLinkTitle(activity.getTitle()));
-      body = TemplateUtils.processGroovy(templateContext);
-    } else {
-      templateContext.put("REPLY_ACTION_URL", LinkProviderUtils.getRedirectUrl("reply_activity", activityId));
-      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activityId));
-      body = SocialNotificationUtils.getBody(ctx, templateContext, activity);
-    }
-    
-    return messageInfo.subject(subject).body(body).end();
   }
 
   @Override
@@ -162,33 +118,4 @@ public class ActivityMentionPlugin extends AbstractNotificationPlugin {
     return false;
   }
 
-  @Override
-  protected String makeUIMessage(NotificationContext ctx) {
-    
-    NotificationInfo notification = ctx.getNotificationInfo();
-    String language = getLanguage(notification);
-
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
-    templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
-    templateContext.put("USER", identity.getProfile().getFullName());
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("ACTIVITY", NotificationUtils.removeLinkTitle(activity.getTitle()));
-    
-    // In case of mention on a comment, we need provide the id of the activity, not of the comment
-    if (activity.isComment()) {
-      ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
-      activityId = parentActivity.getId();
-      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity_highlight_comment", activityId + "-" + activity.getId()));
-    } else {
-      templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activityId));
-    }
-    return TemplateUtils.processIntranetGroovy(templateContext);
-  }
 }

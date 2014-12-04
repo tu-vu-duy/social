@@ -42,10 +42,6 @@ import org.exoplatform.webui.utils.TimeConvertUtils;
 
 public class RequestJoinSpacePlugin extends AbstractNotificationPlugin {
   
-  private static final String VALIDATE_SPACE_REQUEST = "social/intranet-notification/validateRequestToJoinSpace";
-
-  private static final String REFUSE_SPACE_REQUEST = "social/intranet-notification/refuseRequestToJoinSpace";
-  
   public RequestJoinSpacePlugin(InitParams initParams) {
     super(initParams);
   }
@@ -66,35 +62,6 @@ public class RequestJoinSpacePlugin extends AbstractNotificationPlugin {
            .with("request_from", userId)
            .with("spaceId", space.getId())
            .to(Arrays.asList(space.getManagers()));
-  }
-
-  @Override
-  public MessageInfo makeMessage(NotificationContext ctx) {
-    MessageInfo messageInfo = new MessageInfo();
-    
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
-
-    String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
-    Space space = Utils.getSpaceService().getSpaceById(spaceId);
-    Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, notification.getValueOwnerParameter("request_from"), true);
-    Profile userProfile = identity.getProfile();
-    
-    templateContext.put("SPACE", space.getDisplayName());
-    templateContext.put("USER", userProfile.getFullName());
-    String subject = TemplateUtils.processSubject(templateContext);
-    
-    templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space_members", space.getId()));
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(userProfile));
-    templateContext.put("VALIDATE_SPACE_REQUEST_ACTION_URL", LinkProviderUtils.getValidateRequestToJoinSpaceUrl(space.getId(), identity.getRemoteId()));
-    templateContext.put("REFUSE_SPACE_REQUEST_ACTION_URL", LinkProviderUtils.getRefuseRequestToJoinSpaceUrl(space.getId(), identity.getRemoteId()));
-    String body = TemplateUtils.processGroovy(templateContext);
-    
-    return messageInfo.subject(subject).body(body).end();
   }
 
   @Override
@@ -136,33 +103,6 @@ public class RequestJoinSpacePlugin extends AbstractNotificationPlugin {
       return true;
     }
     return false;
-  }
-
-  @Override
-  protected String makeUIMessage(NotificationContext ctx) {
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-
-    String status = notification.getValueOwnerParameter("status");
-    String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
-    Space space = Utils.getSpaceService().getSpaceById(spaceId);
-    Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, notification.getValueOwnerParameter("request_from"), true);
-    Profile userProfile = identity.getProfile();
-    
-    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
-    templateContext.put("STATUS", status != null && status.equals("accepted") ? "ACCEPTED" : "PENDING");
-    templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
-    templateContext.put("SPACE", space.getDisplayName());
-    templateContext.put("USER", userProfile.getFullName());
-    templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space_members", space.getId()));
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(userProfile));
-    templateContext.put("VALIDATE_SPACE_REQUEST_ACTION_URL", LinkProviderUtils.getRestUrl(VALIDATE_SPACE_REQUEST, space.getId(), identity.getRemoteId()));
-    templateContext.put("REFUSE_SPACE_REQUEST_ACTION_URL", LinkProviderUtils.getRestUrl(REFUSE_SPACE_REQUEST, space.getId(), identity.getRemoteId()));
-    return TemplateUtils.processIntranetGroovy(templateContext);
   }
 
 }

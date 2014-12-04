@@ -68,32 +68,6 @@ public class ActivityCommentPlugin extends AbstractNotificationPlugin {
   }
 
   @Override
-  public MessageInfo makeMessage(NotificationContext ctx) {
-    MessageInfo messageInfo = new MessageInfo();
-    NotificationInfo notification = ctx.getNotificationInfo();
-    String language = getLanguage(notification);
-
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    templateContext.put("USER", identity.getProfile().getFullName());
-    String subject = TemplateUtils.processSubject(templateContext);
-    
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("COMMENT", NotificationUtils.processLinkTitle(activity.getTitle()));
-    templateContext.put("REPLY_ACTION_URL", LinkProviderUtils.getRedirectUrl("reply_activity_highlight_comment", parentActivity.getId() + "-" + activity.getId()));
-    templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity_highlight_comment", parentActivity.getId() + "-" + activity.getId()));
-
-    String body = SocialNotificationUtils.getBody(ctx, templateContext, parentActivity);
-    
-    return messageInfo.subject(subject).body(body).end();
-  }
-
-  @Override
   public String getId() {
     return ID;
   }
@@ -143,29 +117,5 @@ public class ActivityCommentPlugin extends AbstractNotificationPlugin {
     }
     return true;
   }
-
-  @Override
-  protected String makeUIMessage(NotificationContext ctx) {
-    NotificationInfo notification = ctx.getNotificationInfo();
-    String language = getLanguage(notification);
-
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
-    templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
-    templateContext.put("USER", identity.getProfile().getFullName());
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
-    templateContext.put("ACTIVITY", NotificationUtils.removeLinkTitle(parentActivity.getTitle()));
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity_highlight_comment", parentActivity.getId() + "-" + activity.getId()));
-
-    return TemplateUtils.processIntranetGroovy(templateContext);
-  }
-  
   
 }

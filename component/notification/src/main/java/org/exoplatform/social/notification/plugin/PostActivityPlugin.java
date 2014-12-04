@@ -69,34 +69,6 @@ public class PostActivityPlugin extends AbstractNotificationPlugin {
   }
 
   @Override
-  public MessageInfo makeMessage(NotificationContext ctx) {
-    MessageInfo messageInfo = new MessageInfo();
-    
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
-
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    
-    
-    templateContext.put("USER", identity.getProfile().getFullName());
-    templateContext.put("SUBJECT", activity.getTitle());
-    String subject = TemplateUtils.processSubject(templateContext);
-    
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("REPLY_ACTION_URL", LinkProviderUtils.getRedirectUrl("reply_activity", activity.getId()));
-    templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activity.getId()));
-    
-    String body = SocialNotificationUtils.getBody(ctx, templateContext, activity);
-    
-    return messageInfo.subject(subject).body(body).end();
-  }
-
-  @Override
   public boolean makeDigest(NotificationContext ctx, Writer writer) {
     List<NotificationInfo> notifications = ctx.getNotificationInfos();
     NotificationInfo first = notifications.get(0);
@@ -131,28 +103,6 @@ public class PostActivityPlugin extends AbstractNotificationPlugin {
       return false;
     }
     return true;
-  }
-
-  @Override
-  protected String makeUIMessage(NotificationContext ctx) {
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-
-    String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
-    ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
-    Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
-    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
-    templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
-    templateContext.put("AVATAR", LinkProviderUtils.getUserAvatarUrl(identity.getProfile()));
-    templateContext.put("ACTIVITY", NotificationUtils.removeLinkTitle(activity.getTitle()));
-    templateContext.put("USER", identity.getProfile().getFullName());
-    templateContext.put("PROFILE_URL", LinkProviderUtils.getRedirectUrl("user", identity.getRemoteId()));
-    templateContext.put("VIEW_FULL_DISCUSSION_ACTION_URL", LinkProviderUtils.getRedirectUrl("view_full_activity", activity.getId()));
-    
-    return TemplateUtils.processIntranetGroovy(templateContext);
   }
 
 }

@@ -25,6 +25,7 @@ import org.exoplatform.commons.api.notification.model.MessageInfo;
 import org.exoplatform.commons.api.notification.model.NotificationInfo;
 import org.exoplatform.commons.api.notification.model.UserSetting;
 import org.exoplatform.commons.api.notification.plugin.AbstractNotificationPlugin;
+import org.exoplatform.commons.api.notification.service.setting.ChannelManager;
 import org.exoplatform.commons.api.notification.service.setting.UserSettingService;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
@@ -144,8 +145,13 @@ public abstract class AbstractPluginTest extends AbstractCoreTest {
    * @return
    */
   protected MessageInfo buildMessageInfo(NotificationContext ctx) {
-    AbstractNotificationPlugin plugin = getPlugin();
-    MessageInfo massage = plugin.buildMessage(ctx);
+    return buildMessageInfo(getPlugin(), ctx);
+  }
+
+  protected MessageInfo buildMessageInfo(AbstractNotificationPlugin plugin, NotificationContext ctx) {
+    ChannelManager channelManager = ctx.getChannelManager();
+    //
+    MessageInfo massage = channelManager.get("email").getTemplateHandler(plugin.getId()).makeMessage(ctx);
     assertNotNull(massage);
     return massage;
   }

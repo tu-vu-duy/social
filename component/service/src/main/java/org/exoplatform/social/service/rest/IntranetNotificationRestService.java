@@ -28,12 +28,15 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.exoplatform.commons.api.notification.NotificationContext;
+import org.exoplatform.commons.api.notification.channel.AbstractChannel;
+import org.exoplatform.commons.api.notification.channel.AbstractChannelTemplateHandler;
 import org.exoplatform.commons.api.notification.model.NotificationInfo;
 import org.exoplatform.commons.api.notification.model.NotificationKey;
-import org.exoplatform.commons.api.notification.plugin.AbstractNotificationPlugin;
+import org.exoplatform.commons.api.notification.service.storage.IntranetNotificationDataStorage;
 import org.exoplatform.commons.notification.impl.NotificationContextImpl;
 import org.exoplatform.commons.notification.net.WebSocketBootstrap;
 import org.exoplatform.commons.notification.net.WebSocketServer;
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
@@ -83,7 +86,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
     ownerParameter.put("sender", senderId);
     ownerParameter.put("status", "accepted");
     info.setOwnerParameter(ownerParameter);
-    sendBackNotif(info);
+    sendBackNotification(info);
 
     //
     Identity sender = getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, senderId, true); 
@@ -138,7 +141,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
     ownerParameter.put("spaceId", spaceId);
     ownerParameter.put("status", "accepted");
     info.setOwnerParameter(ownerParameter);
-    sendBackNotif(info);
+    sendBackNotification(info);
     
     //
     Space space = getSpaceService().getSpaceById(spaceId);
@@ -192,7 +195,7 @@ public class IntranetNotificationRestService implements ResourceContainer {
     ownerParameter.put("request_from", userId);
     ownerParameter.put("status", "accepted");
     info.setOwnerParameter(ownerParameter);
-    sendBackNotif(info);
+    sendBackNotification(info);
     
     //
     Space space = getSpaceService().getSpaceById(spaceId);
@@ -272,19 +275,19 @@ public class IntranetNotificationRestService implements ResourceContainer {
     return exoContainer;
   }
   
-  private void sendBackNotif(NotificationInfo notification) {
-    NotificationContext nCtx = NotificationContextImpl.cloneInstance();
-    AbstractNotificationPlugin plugin = nCtx.getPluginContainer().getPlugin(notification.getKey());
-    if (plugin == null) {
-      return;
-    }
+  private void sendBackNotification(NotificationInfo notification) {
+    NotificationContext nCtx = NotificationContextImpl.cloneInstance().setNotificationInfo(notification);
     try {
+      String channelId = CommonsUtils.getService(IntranetNotificationDataStorage.class).getChannelId();
       notification.setLastModifiedDate(Calendar.getInstance());
-      nCtx.setNotificationInfo(notification);
-      String message = plugin.buildUIMessage(nCtx);
-      JsonObject jsonObject = new JsonObject();
-      jsonObject.putString("message", message);
-      WebSocketBootstrap.sendMessage(WebSocketServer.NOTIFICATION_WEB_IDENTIFIER, notification.getTo(), jsonObject.encode());
+      AbstractChannel channelPlugin = nCtx.getChannelManager().get(channelId);
+      if (channelPlugin != null) {
+        AbstractChannelTemplateHandler templateHandler = channelPlugin.getTemplateHandler(notification.getKey().getId());
+        if (templateHandler != null) {
+          String message = templateHandler.makeMessage(nCtx).getBody();
+          WebSocketBootstrap.sendJsonMessage(WebSocketServer.NOTIFICATION_WEB_IDENTIFIER, notification.getTo(), message);
+        }
+      }
     } catch (Exception e) {
       System.out.println("error : " + e.getMessage());
     }

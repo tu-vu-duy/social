@@ -74,7 +74,7 @@ public class ActivityCommentPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(commentNotification.setTo(demoIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, demoIdentity.getProfile().getFullName() + " commented one of your activities");
     assertBody(info, "New comment on your activity");
@@ -99,7 +99,7 @@ public class ActivityCommentPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(commentNotification.setTo(maryIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, maryIdentity.getProfile().getFullName() + " commented one of your activities");
     assertBody(info, "New comment on your activity");
@@ -121,7 +121,7 @@ public class ActivityCommentPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(commentNotification.setTo(demoIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, demoIdentity.getProfile().getFullName() + " commented one of your activities");
     assertBody(info, "New comment on your activity");
@@ -159,7 +159,7 @@ public class ActivityCommentPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(commentNotification.setTo(demoIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, demoIdentity.getProfile().getFullName() + " commented one of your activities");
     assertBody(info, "New comment on your activity");

@@ -190,7 +190,8 @@ public class SocialNotificationTestCase extends AbstractPluginTest {
  
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(message1.setTo("mary"));
-    MessageInfo info = commentPlugin.buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(commentPlugin, ctx);
+                        
     assertEquals(demoIdentity.getProfile().getFullName() + " commented one of your activities<br/>", info.getSubject());
     assertTrue(info.getBody().indexOf("New comment on your activity") > 0);
     
@@ -203,7 +204,7 @@ public class SocialNotificationTestCase extends AbstractPluginTest {
     
     ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(message2.setTo("mary"));
-    MessageInfo info1 = mentionPlugin.buildMessage(ctx);
+    MessageInfo info1 = buildMessageInfo(mentionPlugin, ctx);
     assertEquals("You were mentioned by " + demoIdentity.getProfile().getFullName() + "<br/>", info1.getSubject());
     assertTrue(info1.getBody().indexOf("New mention of you") > 0);
     
@@ -226,7 +227,7 @@ public class SocialNotificationTestCase extends AbstractPluginTest {
       NotificationInfo message = messages.iterator().next();
       NotificationContext ctx = NotificationContextImpl.cloneInstance();
       ctx.setNotificationInfo(message.setTo("demo"));
-      MessageInfo info = commentPlugin.buildMessage(ctx);
+      MessageInfo info = buildMessageInfo(commentPlugin, ctx);
   
       assertEquals(demoIdentity.getProfile().getFullName() + " commented one of your activities<br/>", info.getSubject());
       assertTrue(info.getBody().indexOf("New comment on your activity") > 0);
@@ -372,7 +373,7 @@ public class SocialNotificationTestCase extends AbstractPluginTest {
     NotificationInfo message = messages.iterator().next();
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(message.setTo("demo"));
-    MessageInfo info = relationshipReceivedRequestPlugin.buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(relationshipReceivedRequestPlugin, ctx);
     
     assertTrue(info.getBody().indexOf("New connection request") > 0);
   }
@@ -386,7 +387,7 @@ public class SocialNotificationTestCase extends AbstractPluginTest {
     NotificationInfo message = messages.iterator().next();
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(message.setTo("mary"));
-    MessageInfo info = spaceInvitationPlugin.buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(spaceInvitationPlugin, ctx);
     assertEquals("You've been invited to join "+ space.getDisplayName() + " space<br/>", info.getSubject());
     spaceService.deleteSpace(space);
   }

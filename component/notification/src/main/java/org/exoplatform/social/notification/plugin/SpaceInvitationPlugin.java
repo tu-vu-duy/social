@@ -38,10 +38,6 @@ import org.exoplatform.webui.utils.TimeConvertUtils;
 
 public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
   
-  private static final String ACCEPT_SPACE_INVITATION = "social/intranet-notification/acceptInvitationToJoinSpace";
-
-  private static final String REFUSE_SPACE_INVITATION = "social/intranet-notification/ignoreInvitationToJoinSpace";
-  
   public static final String ID = "SpaceInvitationPlugin";
 
   public SpaceInvitationPlugin(InitParams initParams) {
@@ -62,31 +58,6 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
            .with(SocialNotificationUtils.PRETTY_NAME.getKey(), space.getPrettyName())
            .with(SocialNotificationUtils.SPACE_ID.getKey(), space.getId())
            .to(userId).end();
-  }
-
-  @Override
-  public MessageInfo makeMessage(NotificationContext ctx) {
-    MessageInfo messageInfo = new MessageInfo();
-    
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-    SocialNotificationUtils.addFooterAndFirstName(notification.getTo(), templateContext);
-
-    String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
-    Space space = Utils.getSpaceService().getSpaceById(spaceId);
-    
-    templateContext.put("SPACE", space.getDisplayName());
-    templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space", space.getId()));
-    String subject = TemplateUtils.processSubject(templateContext);
-    
-    templateContext.put("SPACE_AVATAR", LinkProviderUtils.getSpaceAvatarUrl(space));
-    templateContext.put("ACCEPT_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getAcceptInvitationToJoinSpaceUrl(space.getId(), notification.getTo()));
-    templateContext.put("REFUSE_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getIgnoreInvitationToJoinSpaceUrl(space.getId(), notification.getTo()));
-    String body = TemplateUtils.processGroovy(templateContext);
-    
-    return messageInfo.subject(subject).body(body).end();
   }
 
   @Override
@@ -120,29 +91,6 @@ public class SpaceInvitationPlugin extends AbstractNotificationPlugin {
   @Override
   public boolean isValid(NotificationContext ctx) {
     return true;
-  }
-
-  @Override
-  protected String makeUIMessage(NotificationContext ctx) {
-    NotificationInfo notification = ctx.getNotificationInfo();
-    
-    String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
-
-    String status = notification.getValueOwnerParameter("status");
-    String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
-    Space space = Utils.getSpaceService().getSpaceById(spaceId);
-    templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
-    templateContext.put("STATUS", status != null && status.equals("accepted") ? "ACCEPTED" : "PENDING");
-    templateContext.put("NOTIFICATION_ID", notification.getId());
-    templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
-    templateContext.put("SPACE", space.getDisplayName());
-    templateContext.put("SPACE_URL", LinkProviderUtils.getRedirectUrl("space", space.getId()));
-    templateContext.put("SPACE_AVATAR", LinkProviderUtils.getSpaceAvatarUrl(space));
-    templateContext.put("ACCEPT_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getRestUrl(ACCEPT_SPACE_INVITATION, space.getId(), notification.getTo()));
-    templateContext.put("REFUSE_SPACE_INVITATION_ACTION_URL", LinkProviderUtils.getRestUrl(REFUSE_SPACE_INVITATION, space.getId(), notification.getTo()));
-    return TemplateUtils.processIntranetGroovy(templateContext);
-    
   }
 
 }

@@ -17,7 +17,6 @@
 package org.exoplatform.social.portlet.userNotification;
 
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +44,7 @@ import org.exoplatform.commons.api.notification.model.PluginInfo;
 import org.exoplatform.commons.api.notification.model.UserSetting;
 import org.exoplatform.commons.api.notification.model.UserSetting.FREQUENCY;
 import org.exoplatform.commons.api.notification.plugin.config.PluginConfig;
+import org.exoplatform.commons.api.notification.service.setting.ChannelManager;
 import org.exoplatform.commons.api.notification.service.setting.PluginSettingService;
 import org.exoplatform.commons.api.notification.service.setting.UserSettingService;
 import org.exoplatform.commons.juzu.ajax.Ajax;
@@ -71,7 +71,10 @@ public class UserNotificationSetting {
   ResourceBundle bundle;  
   
   @Inject
-  PluginSettingService providerSettingService;
+  PluginSettingService pluginSettingService;
+
+  @Inject
+  ChannelManager channelManager;
 
   @Inject
   UserSettingService     userSettingService;
@@ -211,7 +214,7 @@ public class UserNotificationSetting {
 
     UserSetting setting = userSettingService.get(getRemoteUser());
     //
-    List<GroupProvider> groups = providerSettingService.getGroupPlugins();
+    List<GroupProvider> groups = pluginSettingService.getGroupPlugins();
     parameters.put("groups", groups);
     //
     boolean hasActivePlugin = false;
@@ -223,9 +226,9 @@ public class UserNotificationSetting {
     
     Map<String, String> options = buildOptions(context);
     
-    List<String> channels = Arrays.asList(UserSetting.EMAIL_CHANNEL, UserSetting.INTRANET_CHANNEL);
+    List<String> channels = channelManager.getChannelIds();
     
-    for (GroupProvider groupProvider : providerSettingService.getGroupPlugins()) {
+    for (GroupProvider groupProvider : pluginSettingService.getGroupPlugins()) {
       for (PluginInfo info : groupProvider.getProviderDatas()) {
         String pluginId = info.getType();
         for (String channelId : channels) {
@@ -351,22 +354,22 @@ public class UserNotificationSetting {
     }
     
     private String getBundlePath(String id) {
-      PluginConfig pluginConfig = providerSettingService.getPluginConfig(id);
+      PluginConfig pluginConfig = pluginSettingService.getPluginConfig(id);
       if (pluginConfig != null) {
-        return pluginConfig.getTemplateConfig().getBundlePath();
+        return pluginConfig.getBundlePath();
       }
       //
       if (GroupProvider.defaultGroupIds.contains(id)) {
-        return providerSettingService.getPluginConfig(DigestDailyPlugin.ID)
-            .getTemplateConfig().getBundlePath();
+        return pluginSettingService.getPluginConfig(DigestDailyPlugin.ID).getBundlePath();
       }
       //
-      List<GroupProvider> groups = providerSettingService.getGroupPlugins();
+      List<GroupProvider> groups = pluginSettingService.getGroupPlugins();
       for (GroupProvider groupProvider : groups) {
         if (groupProvider.getGroupId().equals(id)) {
           return groupProvider.getProviderDatas().get(0).getBundlePath();
         }
       }
+      
       return "";
     }
 

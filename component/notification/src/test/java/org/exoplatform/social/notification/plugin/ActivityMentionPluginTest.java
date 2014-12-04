@@ -48,7 +48,7 @@ public class ActivityMentionPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(mentionNotification.setTo(demoIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, "You were mentioned by " + maryIdentity.getProfile().getFullName());
     assertBody(info, "New mention of you");
@@ -66,7 +66,7 @@ public class ActivityMentionPluginTest extends AbstractPluginTest {
     
     NotificationContext ctx = NotificationContextImpl.cloneInstance();
     ctx.setNotificationInfo(commentNotification.setTo(johnIdentity.getRemoteId()));
-    MessageInfo info = getPlugin().buildMessage(ctx);
+    MessageInfo info = buildMessageInfo(ctx);
     
     assertSubject(info, "You were mentioned by " + demoIdentity.getProfile().getFullName());
     assertBody(info, "New mention of you");
