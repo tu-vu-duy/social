@@ -117,11 +117,9 @@ public class UIIntranetNotificationsPortlet extends UIPortletApplication {
 
   private String buildNotificationMessage(NotificationInfo notification) {
     NotificationContext nCtx = NotificationContextImpl.cloneInstance();
-    AbstractNotificationPlugin plugin = nCtx.getPluginContainer().getPlugin(notification.getKey());
     try {
-      notification.setLastModifiedDate(Calendar.getInstance());
       nCtx.setNotificationInfo(notification);
-      return plugin.buildUIMessage(nCtx);
+      return nCtx.getChannelManager().get(dataStorage.getChannelId()).getTemplateHandler(notification.getKey().getId()).makeMessage(nCtx).getBody();
     } catch (Exception e) {
       
     }
