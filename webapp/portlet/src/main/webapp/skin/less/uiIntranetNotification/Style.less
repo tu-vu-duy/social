@@ -61,24 +61,11 @@
 				background-color: @quoteSecondBackground;
 			}
 			&:hover {
-				#gradient > .vertical(@dropdownLinkBackgroundHover, darken(@dropdownLinkBackgroundHover, 15%));
-				color: @white;
+				background-color: @componentBackgroundLight;
 				> .remove-item {
 					> .uiIconClose, > .uiIconClose:hover {
 						background-image: url("@{images-path}/Icons/uiIconsWhite.png")!important;
 					}
-				}
-				a {
-					color: @white!important;
-				}
-				.btn {
-					color: @textColor!important;
-					&.btn-primary {
-						color: @white!important;
-					}
-				}
-				.lastUpdatedTime {
-					color: @white;
 				}
 			}
 			&:first-child {
