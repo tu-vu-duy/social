@@ -19,7 +19,7 @@
 @Portlet
 @Bindings({ 
     @Binding(PluginSettingService.class), 
-    @Binding(ChannelManager.class), 
+    @Binding(ChannelManager.class),
     @Binding(UserSettingService.class) 
   }
 )

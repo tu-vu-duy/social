@@ -54,7 +54,7 @@ public class DefaultActivityChildPlugin extends AbstractNotificationChildPlugin 
     NotificationInfo notification = ctx.getNotificationInfo();
 
     String language = getLanguage(notification);
-    TemplateContext templateContext = new TemplateContext("", ID, language);
+    TemplateContext templateContext = new TemplateContext(ID, language);
 
     String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
     ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);

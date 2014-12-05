@@ -17,6 +17,7 @@
 package org.exoplatform.social.portlet.userNotification;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -122,9 +123,14 @@ public class UserNotificationSetting {
           String channelId = channel.replaceFirst(CHANNEL_PREFIX, "");
           channels.add(channelId);
           setting.setChannelActive(channelId);
+          setting.setChannelPlugins(channelId, new ArrayList<String>());
         }
       }
-      
+      if(channels.contains(UserSetting.EMAIL_CHANNEL)) {
+        setting.setDailyPlugins(new ArrayList<String>());
+        setting.setWeeklyPlugins(new ArrayList<String>());
+        setting.setInstantlyPlugins(new ArrayList<String>());
+      }
       for (String pluginId : paramsName) {
         if (pluginId.indexOf(SELECT_BOX_PREFIX) > 0) {
           String value = datas.get(pluginId);

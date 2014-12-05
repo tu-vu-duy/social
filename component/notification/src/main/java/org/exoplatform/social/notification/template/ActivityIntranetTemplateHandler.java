@@ -81,7 +81,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         ExoSocialActivity parentActivity = Utils.getActivityManager().getParentActivity(activity);
         Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
         
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         templateContext.put("READ", (notification.isHasRead()) ? "read" : "unread");
         templateContext.put("NOTIFICATION_ID", notification.getId());
         templateContext.put("LAST_UPDATED_TIME", TimeConvertUtils.convertXTimeAgo(notification.getLastModifiedDate().getTime(), "EE, dd yyyy", new Locale(language), TimeConvertUtils.YEAR));
@@ -102,7 +102,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         
         String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
         ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
@@ -133,7 +133,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
         ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
         Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, notification.getValueOwnerParameter("likersId"), true);
@@ -156,7 +156,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         String remoteId = notification.getValueOwnerParameter(SocialNotificationUtils.REMOTE_ID.getKey());
         Identity identity = Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, remoteId, true);
         Profile userProfile = identity.getProfile();
@@ -179,7 +179,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
 
         String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
         ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
@@ -203,7 +203,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         String activityId = notification.getValueOwnerParameter(SocialNotificationUtils.ACTIVITY_ID.getKey());
         ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
         Identity identity = Utils.getIdentityManager().getIdentity(activity.getPosterId(), true);
@@ -234,7 +234,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
 
         String sender = notification.getValueOwnerParameter("sender");
         String status = notification.getValueOwnerParameter("status");
@@ -264,7 +264,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
         String status = notification.getValueOwnerParameter("status");
         String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
         Space space = Utils.getSpaceService().getSpaceById(spaceId);
@@ -296,7 +296,7 @@ public class ActivityIntranetTemplateHandler extends AbstractChannelTemplateHand
         MessageInfo messageInfo = new MessageInfo();
         NotificationInfo notification = ctx.getNotificationInfo();
         String language = NotificationPluginUtils.getLanguage(notification.getTo());
-        TemplateContext templateContext = new TemplateContext(notification.getKey().getId(), language);
+        TemplateContext templateContext = TemplateContext.newChannelInstance(channelId, notification.getKey().getId(), language);
 
         String status = notification.getValueOwnerParameter("status");
         String spaceId = notification.getValueOwnerParameter(SocialNotificationUtils.SPACE_ID.getKey());
