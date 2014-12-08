@@ -3,16 +3,44 @@
   var Notification = {
     formData: '',
     parentId: '#userNotification',
+    saveSetting : function(e) {
+      var jElm = $(this);
+      if(jElm.is('button') && jElm.hasClass('disabled')) {
+        return;
+      }
+      var id = jElm.attr('id');
+      var msgOk = jElm.attr('data-ok');
+      var msgNOk = jElm.attr('data-nok');
+      
+      Notification.formData = $(document.forms['uiNotificationSetting']).serialize();
+      $(Notification.parentId).jzAjax({        
+        url : "UserNotificationSetting.saveSetting()",
+        data : {
+          "params" : Notification.formData
+        },
+        success : function(data) {
+          if(data.ok === 'true') {
+            if(data.status === 'false') {
+              $(Notification.parentId).find('div.form-horizontal:first').hide();
+            } else {
+              $(Notification.parentId).find('div.form-horizontal:first').show();
+            }
+          }
+          if(jElm.is('button')) {
+            jElm.addClass('disabled');
+          }
+        }
+      }).fail(function(jqXHR, textStatus) {
+        alert( "Request failed: " + textStatus + ". "+jqXHR);
+      });
+    },
     onload : function() {
       Notification.formData = $(document.forms['uiNotificationSetting']).serialize();
       var parent = $(Notification.parentId);
+      var save = parent.find("button#Save").addClass('disabled');
       var reset = parent.find("button#Reset");
       //
-      parent.find("button#save-setting").on('click', Notification.saveSetting) ;
-      //
-      parent.find("a.edit-setting").on('click', function(evt) {
-        $(this).parents('div.channel-container:first').removeClass('view').addClass('edit');
-      });
+      save.on('click', Notification.saveSetting) ;
       //
       reset.on('click', function(e) {
         var elm = $(this);
@@ -48,26 +76,6 @@
           var input = $(this.elem);
           Notification.switchStatus(input.attr('name'), input.hasClass("staus-false"));
         }
-      });
-    },
-    saveSetting : function(e) {
-      var jElm = $(this);
-      var pluginId = jElm.attr('id');
-      var msgOk = jElm.attr('data-ok');
-      var msgNOk = jElm.attr('data-nok');
-      //
-      var parent = jElm.parents('div.channel-container:first');
-      
-      
-      $(Notification.parentId).jzAjax({        
-        url : "UserNotificationSetting.saveSetting()",
-        data : {
-          "params" : {}
-        },
-        success : function(data) {
-        }
-      }).fail(function(jqXHR, textStatus) {
-        alert( "Request failed: " + textStatus + ". "+jqXHR);
       });
     },
     switchStatus : function(channelId, isEnable) {

@@ -111,7 +111,27 @@ public class UserNotificationSetting {
   @Ajax
   @POST
   @Resource
-  public Response saveSetting(String params) {
+  public Response saveSetting(String pluginId, String params) {
+    JSON data = new JSON();
+    try {
+      UserSetting setting = userSettingService.get(getRemoteUser());
+      
+      //
+      userSettingService.save(setting);
+      data.set("ok", "true");
+      data.set("status", "true");
+    } catch (Exception e) {
+      LOG.error("Failed to save user settings: ", e);
+      data.set("ok", "false");
+      data.set("status", e.toString());
+    }
+    return Response.ok(data.toString()).withMimeType("application/json");
+  }
+
+  @Ajax
+  @POST
+  @Resource
+  public Response saveSetting_(String params) {
     JSON data = new JSON();
     try {
       Map<String, String> datas = parserParams(params);
@@ -224,27 +244,23 @@ public class UserNotificationSetting {
     parameters.put("groups", groups);
     //
     boolean hasActivePlugin = false;
-    Map<String, String> emailSelectBoxList = new HashMap<String, String>();
-    Map<String, String> emailCheckBoxList = new HashMap<String, String>();
+    Map<String, SelectBoxInput> emailSelectBoxList = new HashMap<String, SelectBoxInput>();
+    Map<String, CheckBoxInput> emailCheckBoxList = new HashMap<String, CheckBoxInput>();
     //
-    
-    Map<String, String> channelCheckBoxList = new HashMap<String, String>();
-    
+    Map<String, CheckBoxInput> channelCheckBoxList = new HashMap<String, CheckBoxInput>();
     Map<String, String> options = buildOptions(context);
-    
     List<String> channels = channelManager.getChannelIds();
-    
     for (GroupProvider groupProvider : pluginSettingService.getGroupPlugins()) {
-      for (PluginInfo info : groupProvider.getProviderDatas()) {
+      for (PluginInfo info : groupProvider.getPluginInfos()) {
         String pluginId = info.getType();
         for (String channelId : channels) {
           if(info.isChannelActive(channelId)) {
             if(UserSetting.EMAIL_CHANNEL.equals(channelId)) {
-              emailSelectBoxList.put(pluginId, buildSelectBox(channelId + pluginId, options, getValue(setting, pluginId), setting.isChannelActive(channelId)));
-              emailCheckBoxList.put(pluginId, buildCheckBox(channelId + pluginId, setting.isInInstantly(pluginId), setting.isChannelActive(channelId)));
+              emailSelectBoxList.put(pluginId, new SelectBoxInput(channelId + pluginId, options, getValue(setting, pluginId), setting.isChannelActive(channelId)));
+              emailCheckBoxList.put(pluginId, new CheckBoxInput(channelId + pluginId, setting.isInInstantly(pluginId), setting.isChannelActive(channelId)));
               hasActivePlugin = true;
             } else {
-              channelCheckBoxList.put(channelId + pluginId, buildCheckBox(channelId + pluginId, setting.isInChannel(channelId, pluginId), setting.isChannelActive(channelId)));
+              channelCheckBoxList.put(channelId + pluginId, new CheckBoxInput(channelId + pluginId, setting.isInChannel(channelId, pluginId), setting.isChannelActive(channelId)));
               hasActivePlugin = true;
             }
           }
@@ -252,7 +268,6 @@ public class UserNotificationSetting {
       }
     }
     parameters.put("hasActivePlugin", hasActivePlugin);
-    
     parameters.put("emailCheckBoxList", emailCheckBoxList);
     parameters.put("emailSelectBoxList", emailSelectBoxList);
     //
@@ -263,10 +278,9 @@ public class UserNotificationSetting {
       channelStatus.put(channelId, setting.isChannelActive(channelId));
     }
     parameters.put("channelStatus", channelStatus);
-
     parameters.put("channels", channels);
     parameters.put("emailChannel", UserSetting.EMAIL_CHANNEL);
-    
+
     return parameters;
   }
   
@@ -286,33 +300,10 @@ public class UserNotificationSetting {
   
   private Map<String, String> buildOptions(Context context) {
     Map<String, String> options = new HashMap<String, String>();
-    options.put("Daily", context.appRes("UINotification.label.Daily"));
-    options.put("Weekly", context.appRes("UINotification.label.Weekly"));
-    options.put("Never", context.appRes("UINotification.label.Never"));
+    options.put(SelectBoxInput.DAILY, context.appRes("UINotification.label.Daily"));
+    options.put(SelectBoxInput.WEEKLY, context.appRes("UINotification.label.Weekly"));
+    options.put(SelectBoxInput.NEVER, context.appRes("UINotification.label.Never"));
     return options;
-  }
-  
-  private String buildCheckBox(String name, boolean isChecked, boolean isActive) {
-    StringBuffer buffer = new StringBuffer("<span class=\"uiCheckbox\">");
-    buffer.append("<input type=\"checkbox\" class=\"checkbox\" ")
-          .append((isChecked == true) ? "checked=\"checked\" " : "")
-          .append((isActive == false) ? "disabled " : "")
-          .append("name=\"").append(name).append("\" id=\"").append(name).append("\" />")
-          .append("<span></span></span>");
-    return buffer.toString();
-  }
-
-  private String buildSelectBox(String name, Map<String, String> options, String selectedId, boolean isActive) {
-    String selected = "";
-    String id = makeSelectBoxId(name);
-    StringBuffer buffer = new StringBuffer("<span class=\"uiSelectbox\">");
-    buffer.append("<select name=\"").append(id).append("\" id=\"").append(id).append("\"").append((isActive == false) ? " disabled " : "").append(" class=\"selectbox input-small\">");
-    for (String key : options.keySet()) {
-      selected = (key.equals(selectedId) == true) ? " selected=\"selected\" " : "";
-      buffer.append("<option value=\"").append(key).append("\" class=\"option\"").append(selected).append(">").append(options.get(key)).append("</option>");
-    }
-    buffer.append("</select>").append("</span>");
-    return buffer.toString();
   }
   
   private Map<String, String> parserParams(String params) {
@@ -372,7 +363,7 @@ public class UserNotificationSetting {
       List<GroupProvider> groups = pluginSettingService.getGroupPlugins();
       for (GroupProvider groupProvider : groups) {
         if (groupProvider.getGroupId().equals(id)) {
-          return groupProvider.getProviderDatas().get(0).getBundlePath();
+          return groupProvider.getPluginInfos().get(0).getBundlePath();
         }
       }
       
@@ -382,6 +373,82 @@ public class UserNotificationSetting {
     public String pluginRes(String key, String id) {
       String path = getBundlePath(id);
       return TemplateUtils.getResourceBundle(key, locale, path);
+    }
+  }
+  
+  public class CheckBoxInput {
+    private final String  name;
+    private final boolean isChecked;
+    private final boolean isActive;
+
+    public CheckBoxInput(String name, boolean isChecked, boolean isActive) {
+      this.name = name;
+      this.isActive = isActive;
+      this.isChecked = isChecked;
+    }
+    public String getName() {
+      return name;
+    }
+    public boolean isChecked() {
+      return isChecked;
+    }
+    public boolean isActive() {
+      return isActive;
+    }
+    public String render() {
+      StringBuffer buffer = new StringBuffer("<span class=\"uiCheckbox\">");
+      buffer.append("<input type=\"checkbox\" class=\"checkbox\" ")
+            .append((isChecked == true) ? "checked=\"checked\" " : "")
+            .append((isActive == false) ? "disabled " : "")
+            .append("name=\"").append(name).append("\" id=\"").append(name).append("\" />")
+            .append("<span></span></span>");
+      return buffer.toString();
+    }
+  }
+  
+  public class SelectBoxInput {
+    public static final String NEVER = "Never";
+    public static final String DAILY = "Daily";
+    public static final String WEEKLY = "Weekly";
+    private final String name;
+    private final Map<String, String> options;
+    private final String selectedId;
+    private final boolean isActive;
+    public SelectBoxInput(String name, Map<String, String> options, String selectedId, boolean isActive) {
+      this.name = name;
+      this.options = options;
+      this.selectedId = selectedId;
+      this.isActive = isActive;
+    }
+    public String getName() {
+      return name;
+    }
+    public String getSelectedId() {
+      return selectedId;
+    }
+    public String getValueLabel() {
+      if (options.containsKey(selectedId)) {
+        return options.get(selectedId);
+      }
+      return selectedId;
+    }
+    public boolean isActive() {
+      return isActive;
+    }
+    public boolean isActiveSend() {
+      return !NEVER.equals(selectedId);
+    }
+    public String render() {
+      String selected = "";
+      String id = makeSelectBoxId(name);
+      StringBuffer buffer = new StringBuffer("<span class=\"uiSelectbox\">");
+      buffer.append("<select name=\"").append(id).append("\" id=\"").append(id).append("\"").append((isActive == false) ? " disabled " : "").append(" class=\"selectbox input-small\">");
+      for (String key : options.keySet()) {
+        selected = (key.equals(selectedId) == true) ? " selected=\"selected\" " : "";
+        buffer.append("<option value=\"").append(key).append("\" class=\"option\"").append(selected).append(">").append(options.get(key)).append("</option>");
+      }
+      buffer.append("</select>").append("</span>");
+      return buffer.toString();
     }
   }
      
