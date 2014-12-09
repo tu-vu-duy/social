@@ -9,7 +9,28 @@
 	    transform: translate(-50%);
 	    margin-top: -10px;
 	}
-	
+	.form-horizontal [class^="uiIconPLF"] {
+		display: inline-block;
+		width: 16px;
+		height: 16px;
+		*margin-right: .3em;
+		line-height: 16px;
+		vertical-align: text-top;
+		background-image: url("/eXoPlatformResources/skin/images/icons/uiIconsPLFDarkGray.png");
+		background-repeat: no-repeat;
+	}
+	.uiIconPLFintranet {
+		background-position: -100px -20px;
+	}
+	.uiIconPLFemail {
+		background-position: -160px -60px;
+		background-image: url("/eXoResources/skin/images/Icons/uiIconsLightGray.png") !important;
+	}
+	.status-false {
+		color: #777;
+	}
+	.status-true {
+	}
   .uiGrid.table {
       tr.disable {
         color: gray;
@@ -17,6 +38,14 @@
       tr {
         td.left label, td >label{
           padding-left: 20px;
+        }
+        td .view .edit-mode,
+        td .view .btn {
+        	display: none;
+        }
+        td .edit .view-mode,
+        td .edit .edit-setting {
+        	display: none;
         }
       }
   }
