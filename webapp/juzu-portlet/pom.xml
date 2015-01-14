@@ -132,7 +132,7 @@
                 <resource>
                   <directory>${basedir}/src/main/webapp</directory>
                   <includes>
-                    <include>skin/less/**</include>
+                    <include>skin/**</include>
                   </includes>
                 </resource>
               </resources>
