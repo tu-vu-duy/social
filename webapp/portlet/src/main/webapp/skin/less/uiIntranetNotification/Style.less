@@ -16,10 +16,20 @@
 		.text-bold {
 			font-weight: bold;
 		}
+		> li.no-items {
+			text-align: center;
+			background: #d1ddf7 url("/platformNavigation/skin/images/UINotificationPopoverToolbarPortlet/iconBell.png") no-repeat center;
+			padding: 30px;
+			color: #6E6E6E;
+			border-top: solid 1px #215ab2;
+		}
+		&:hover {
+			cursor: default;
+			background: #d1ddf7 url("/platformNavigation/skin/images/UINotificationPopoverToolbarPortlet/iconBell.png") no-repeat center;
+		}
 		> li {
 			display: block;
 			padding: 11px 25px 15px 15px;
-			border-top: 1px solid @borderColor;
 			border-top: none;
 			position: relative;
 			cursor: pointer;
