@@ -16,19 +16,26 @@
  */
 package org.exoplatform.social.core.mysql.storage.test;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.social.common.RealtimeListAccess;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
-import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
+import org.exoplatform.social.core.mysql.model.ActivityEntity;
 import org.exoplatform.social.core.mysql.test.AbstractCoreTest;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.space.SpaceUtils;
@@ -36,13 +43,6 @@ import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.ActivityStorageException;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 /**
  * Unit Test for {@link ActivityManager}, including cache tests.
@@ -127,7 +127,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testSaveActivityNoReturn() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     //test for reserving order of map values for i18n activity
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put("key1", "value 1");
@@ -167,7 +167,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testSaveActivityNoReturnNotStreamOwner() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivityNoReturn(activity);
@@ -188,7 +188,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testSaveActivity() throws ActivityStorageException {
     //save mal-formed activity
     {
-      ExoSocialActivity malformedActivity = new ExoSocialActivityImpl();
+      ExoSocialActivity malformedActivity = new ActivityEntity();
       malformedActivity.setTitle("malform");
       try {
         activityManager.saveActivity(malformedActivity);
@@ -200,7 +200,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
 
     {
       final String activityTitle = "root activity";
-      ExoSocialActivity rootActivity = new ExoSocialActivityImpl();
+      ExoSocialActivity rootActivity = new ActivityEntity();
       rootActivity.setTitle(activityTitle);
       rootActivity.setUserId(rootIdentity.getId());
       activityManager.saveActivity(rootActivity);
@@ -216,7 +216,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
 
     {
       final String title = "john activity";
-      ExoSocialActivity johnActivity = new ExoSocialActivityImpl();
+      ExoSocialActivity johnActivity = new ActivityEntity();
       johnActivity.setTitle(title);
       activityManager.saveActivity(johnIdentity, johnActivity);
 
@@ -228,7 +228,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     // updated and postedTime is optional
     {
       final String title = "test";
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle(title);
       activityManager.saveActivity(demoIdentity, activity);
       tearDownActivityList.add(activity);
@@ -248,7 +248,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testSaveActivityWithStreamOwner() throws Exception {
     String activityTitle = "activity title";
     String userId = demoIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivity(demoIdentity, activity);
@@ -294,7 +294,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
       String activityTitle = "title";
       String userId = rootIdentity.getId();
       
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle(activityTitle);
       activity.setUserId(userId);
 
@@ -321,7 +321,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     assertNull(activityManager.getParentActivity(demoActivity));
 
     //comment
-    ExoSocialActivityImpl comment = new ExoSocialActivityImpl();
+    ActivityEntity comment = new ActivityEntity();
     comment.setTitle("comment");
     comment.setUserId(demoIdentity.getId());
     activityManager.saveComment(demoActivity, comment);
@@ -351,7 +351,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testUpdateActivity() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivityNoReturn(johnIdentity, activity);
@@ -382,7 +382,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testDeleteActivity() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivityNoReturn(johnIdentity, activity);
@@ -405,7 +405,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testDeleteActivityWithId() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivityNoReturn(johnIdentity, activity);
@@ -428,7 +428,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testSaveComment() throws Exception {
     String activityTitle = "activity title";
     String userId = johnIdentity.getId();
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle(activityTitle);
     activity.setUserId(userId);
     activityManager.saveActivityNoReturn(johnIdentity, activity);
@@ -437,7 +437,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     String commentTitle = "Comment title";
     
     //demo comments on john's activity
-    ExoSocialActivity comment = new ExoSocialActivityImpl();
+    ExoSocialActivity comment = new ActivityEntity();
     comment.setTitle(commentTitle);
     comment.setUserId(demoIdentity.getId());
     activityManager.saveComment(activity, comment);
@@ -465,7 +465,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 1.2.0-Beta3
    */
   public void testGetCommentsWithListAccess() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("demo activity");
     demoActivity.setUserId(demoActivity.getId());
     activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
@@ -474,7 +474,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     int total = 10;
     
     for (int i = 0; i < total; i ++) {
-      ExoSocialActivity maryComment = new ExoSocialActivityImpl();
+      ExoSocialActivity maryComment = new ActivityEntity();
       maryComment.setUserId(maryIdentity.getId());
       maryComment.setTitle("mary comment");
       activityManager.saveComment(demoActivity, maryComment);
@@ -493,13 +493,13 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 1.2.0-Beta3
    */
   public void testDeleteComment() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("demo activity");
     demoActivity.setUserId(demoActivity.getId());
     activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
     tearDownActivityList.add(demoActivity);
     
-    ExoSocialActivity maryComment = new ExoSocialActivityImpl();
+    ExoSocialActivity maryComment = new ActivityEntity();
     maryComment.setTitle("mary comment");
     maryComment.setUserId(maryIdentity.getId());
     activityManager.saveComment(demoActivity, maryComment);
@@ -516,7 +516,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 1.2.0-Beta3s
    */
   public void testSaveLike() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("&\"demo activity");
     demoActivity.setUserId(demoActivity.getId());
     activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
@@ -540,7 +540,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 4.0.5
    */  
   public void testSaveLikeNotChangeTemplateParam() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("title");
     demoActivity.setUserId(demoActivity.getId());
     
@@ -571,7 +571,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 1.2.0-Beta3
    */
   public void testDeleteLike() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("demo activity");
     demoActivity.setUserId(demoActivity.getId());
     activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
@@ -610,7 +610,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @since 4.0.5
    */  
   public void testDeleteLikeNotChangeTemplateParam() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("title");
     demoActivity.setUserId(demoActivity.getId());
     
@@ -644,7 +644,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testGetActivitiesWithListAccess() throws Exception {
     int total = 10;
     for (int i = 0; i < total; i ++) {
-      ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+      ExoSocialActivity demoActivity = new ActivityEntity();
       demoActivity.setTitle("demo activity");
       demoActivity.setUserId(demoActivity.getId());
       activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
@@ -668,7 +668,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   public void testGetActivitiesOfConnectionsWithListAccess() throws Exception {
     ExoSocialActivity baseActivity = null;
     for (int i = 0; i < 10; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(johnIdentity.getId());
       activityManager.saveActivityNoReturn(johnIdentity, activity);
@@ -694,7 +694,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
                  demoConnectionActivities.getNumberOfOlder(baseActivity));
     
     for (int i = 0; i < 10; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(maryIdentity.getId());
       activityManager.saveActivityNoReturn(maryIdentity, activity);
@@ -738,7 +738,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     
     //demo posts activities to space
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       activityManager.saveActivityNoReturn(spaceIdentity, activity);
@@ -760,7 +760,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     
     //demo posts activities to space2
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       activityManager.saveActivityNoReturn(spaceIdentity2, activity);
@@ -851,11 +851,11 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     String htmlString = "<span><strong>foo</strong>bar<script>zed</script></span>";
     String htmlRemovedString = "<span><strong>foo</strong>bar&lt;script&gt;zed&lt;/script&gt;</span>";
     
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle("blah blah");
     activityManager.saveActivity(rootIdentity, activity);
 
-    ExoSocialActivity comment = new ExoSocialActivityImpl();
+    ExoSocialActivity comment = new ActivityEntity();
     comment.setTitle(htmlString);
     comment.setUserId(rootIdentity.getId());
     comment.setBody(htmlString);
@@ -875,11 +875,11 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @throws ActivityStorageException
    */
   public  void testGetComment() throws ActivityStorageException {
-    ExoSocialActivity activity = new ExoSocialActivityImpl();;
+    ExoSocialActivity activity = new ActivityEntity();;
     activity.setTitle("blah blah");
     activityManager.saveActivity(rootIdentity, activity);
 
-    ExoSocialActivity comment = new ExoSocialActivityImpl();;
+    ExoSocialActivity comment = new ActivityEntity();;
     comment.setTitle("comment blah blah");
     comment.setUserId(rootIdentity.getId());
 
@@ -899,13 +899,13 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    * @throws ActivityStorageException
    */
   public  void testGetComments() throws ActivityStorageException {
-    ExoSocialActivity activity = new ExoSocialActivityImpl();;
+    ExoSocialActivity activity = new ActivityEntity();;
     activity.setTitle("blah blah");
     activityManager.saveActivityNoReturn(rootIdentity, activity);
 
     List<ExoSocialActivity> comments = new ArrayList<ExoSocialActivity>();
     for (int i = 0; i < 3; i++) {
-      ExoSocialActivity comment = new ExoSocialActivityImpl();;
+      ExoSocialActivity comment = new ActivityEntity();;
       comment.setTitle("comment " + i);
       comment.setUserId(rootIdentity.getId());
       activityManager.saveComment(activity, comment);
@@ -943,7 +943,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
       //FIXBUG: SOC-1194
       //Case: a user create an activity in his stream, then give some comments on it.
       //Delete comments and check
-      ExoSocialActivity activity1 = new ExoSocialActivityImpl();;
+      ExoSocialActivity activity1 = new ActivityEntity();;
       activity1.setUserId(demoIdentity.getId());
       activity1.setTitle(title);
       activityManager.saveActivity(demoIdentity, activity1);
@@ -951,7 +951,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
       final int numberOfComments = 10;
       final String commentTitle = "Activity Comment";
       for (int i = 0; i < numberOfComments; i++) {
-        ExoSocialActivity comment = new ExoSocialActivityImpl();;
+        ExoSocialActivity comment = new ActivityEntity();;
         comment.setUserId(demoIdentity.getId());
         comment.setTitle(commentTitle + i);
         activityManager.saveComment(activity1, comment);
@@ -1121,7 +1121,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
   }
 
   public void testRemoveLike() throws Exception {
-    ExoSocialActivity demoActivity = new ExoSocialActivityImpl();
+    ExoSocialActivity demoActivity = new ActivityEntity();
     demoActivity.setTitle("demo activity");
     demoActivity.setUserId(demoActivity.getId());
     activityManager.saveActivityNoReturn(demoIdentity, demoActivity);
@@ -1236,7 +1236,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     activityManager.addProcessor(new FakeProcessor(9));
     activityManager.addProcessor(new FakeProcessor(8));
 
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle("Hello");
     activityManager.processActivitiy(activity);
     //just verify that we run in priority order
@@ -1265,7 +1265,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
    */
   private void populateActivityMass(Identity user, int number) {
     for (int i = 0; i < number; i++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();;
+      ExoSocialActivity activity = new ActivityEntity();;
       activity.setTitle("title " + i);
       activity.setUserId(user.getId());
       try {
@@ -1286,7 +1286,7 @@ public class ActivityManagerMysqlTest extends AbstractCoreTest {
     // }
 
     for (int i = 0; i < number; i++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
 
       activity.setTitle("title " + i);
       activity.setUserId(posterIdentity.getId());

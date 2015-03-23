@@ -20,12 +20,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
-import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
+import org.exoplatform.social.core.mysql.model.ActivityEntity;
+import org.exoplatform.social.core.mysql.storage.ActivityMysqlStorageImpl;
 import org.exoplatform.social.core.mysql.test.AbstractCoreTest;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
@@ -33,7 +34,6 @@ import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
-import org.exoplatform.social.core.storage.impl.ActivityStorageImpl;
 
 public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   
@@ -41,7 +41,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   private ActivityStorage activityStorage;
   private RelationshipManager relationshipManager;
   private IdentityManager identityManager;
-  private ActivityStorageImpl mysqlStorage;
+  private ActivityMysqlStorageImpl mysqlStorage;
   
   private List<ExoSocialActivity> tearDownActivityList;
   private List<Space> tearDownSpaceList;
@@ -57,7 +57,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     super.setUp();
     identityStorage = getComponent(IdentityStorage.class);
     activityStorage = getComponent(ActivityStorage.class);
-    mysqlStorage = getComponent(ActivityStorageImpl.class);
+    mysqlStorage = getComponent(ActivityMysqlStorageImpl.class);
     relationshipManager = getComponent(RelationshipManager.class);
     identityManager = getComponent(IdentityManager.class);
     
@@ -111,7 +111,10 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     
     ExoSocialActivity activity = createActivity(0);
     //
-    mysqlStorage.saveActivity(demoIdentity, activity);
+    mysqlStorage.saveActivity(rootIdentity, activity);
+    
+    
+    System.out.println(mysqlStorage.findActivity(activity.getId()));
     
     assertNotNull(activity.getId());
     
@@ -342,7 +345,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     ExoSocialActivity baseActivity = null;
     //demo posts activities to space
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       mysqlStorage.saveActivity(spaceIdentity, activity);
@@ -363,7 +366,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     Identity spaceIdentity2 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, space2.getPrettyName(), false);
     //demo posts activities to space2
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       mysqlStorage.saveActivity(spaceIdentity2, activity);
@@ -383,7 +386,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     ExoSocialActivity baseActivity = null;
     //demo posts activities to space
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       mysqlStorage.saveActivity(spaceIdentity, activity);
@@ -404,7 +407,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     Identity spaceIdentity2 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, space2.getPrettyName(), false);
     //demo posts activities to space2
     for (int i = 0; i < totalNumber; i ++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       activity.setUserId(demoIdentity.getId());
       mysqlStorage.saveActivity(spaceIdentity2, activity);
@@ -418,7 +421,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   public void testGetNewerComments() {
     int totalNumber = 10;
     
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle("activity title");
     activity.setUserId(rootIdentity.getId());
     mysqlStorage.saveActivity(rootIdentity, activity);
@@ -426,7 +429,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     
     for (int i = 0; i < totalNumber; i ++) {
       //John comments on Root's activity
-      ExoSocialActivity comment = new ExoSocialActivityImpl();
+      ExoSocialActivity comment = new ActivityEntity();
       comment.setTitle("john comment " + i);
       comment.setUserId(johnIdentity.getId());
       mysqlStorage.saveComment(activity, comment);
@@ -434,7 +437,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     
     for (int i = 0; i < totalNumber; i ++) {
       //John comments on Root's activity
-      ExoSocialActivity comment = new ExoSocialActivityImpl();
+      ExoSocialActivity comment = new ActivityEntity();
       comment.setTitle("demo comment " + i);
       comment.setUserId(demoIdentity.getId());
       mysqlStorage.saveComment(activity, comment);
@@ -460,7 +463,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   public void testGetOlderComments() {
     int totalNumber = 10;
     
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle("activity title");
     activity.setUserId(rootIdentity.getId());
     mysqlStorage.saveActivity(rootIdentity, activity);
@@ -468,7 +471,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     
     for (int i = 0; i < totalNumber; i ++) {
       //John comments on Root's activity
-      ExoSocialActivity comment = new ExoSocialActivityImpl();
+      ExoSocialActivity comment = new ActivityEntity();
       comment.setTitle("john comment " + i);
       comment.setUserId(johnIdentity.getId());
       mysqlStorage.saveComment(activity, comment);
@@ -476,7 +479,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     
     for (int i = 0; i < totalNumber; i ++) {
       //John comments on Root's activity
-      ExoSocialActivity comment = new ExoSocialActivityImpl();
+      ExoSocialActivity comment = new ActivityEntity();
       comment.setTitle("demo comment " + i);
       comment.setUserId(demoIdentity.getId());
       mysqlStorage.saveComment(activity, comment);
@@ -509,11 +512,11 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     assertNotNull(got);
     assertEquals(2, got.getMentionedIds().length);
     
-    ExoSocialActivity comment1 = new ExoSocialActivityImpl();
+    ExoSocialActivity comment1 = new ActivityEntity();
     comment1.setTitle("comment 1");
     comment1.setUserId(demoIdentity.getId());
     mysqlStorage.saveComment(activity, comment1);
-    ExoSocialActivity comment2 = new ExoSocialActivityImpl();
+    ExoSocialActivity comment2 = new ActivityEntity();
     comment2.setTitle("comment 2");
     comment2.setUserId(johnIdentity.getId());
     mysqlStorage.saveComment(activity, comment2);
@@ -522,7 +525,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     assertEquals(2, got.getReplyToId().length);
     assertEquals(2, got.getCommentedIds().length);
     
-    ExoSocialActivity comment3 = new ExoSocialActivityImpl();
+    ExoSocialActivity comment3 = new ActivityEntity();
     comment3.setTitle("hello @mary");
     comment3.setUserId(johnIdentity.getId());
     mysqlStorage.saveComment(activity, comment3);
@@ -565,7 +568,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   
   private void createActivities(int number, Identity owner) {
     for (int i = 0; i < number; i++) {
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      ExoSocialActivity activity = new ActivityEntity();
       activity.setTitle("activity title " + i);
       mysqlStorage.saveActivity(owner, activity);
       tearDownActivityList.add(activity);
@@ -574,7 +577,7 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
   
   private ExoSocialActivity createActivity(int num) {
     //
-    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    ExoSocialActivity activity = new ActivityEntity();
     activity.setTitle("Activity "+ num);
     activity.setTitleId("TitleID: "+ activity.getTitle());
     activity.setType("UserActivity");
