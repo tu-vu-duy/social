@@ -32,6 +32,7 @@
     <module>common</module>
     <module>core</module>
     <module>service</module>
+    <module>webservice</module>
     <module>opensocial</module>
     <module>webui</module>
     <module>notification</module>
