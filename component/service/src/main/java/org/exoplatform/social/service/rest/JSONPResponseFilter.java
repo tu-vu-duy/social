@@ -1,6 +1,7 @@
 package org.exoplatform.social.service.rest;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 
@@ -9,6 +10,7 @@ import org.exoplatform.services.rest.GenericContainerResponse;
 import org.exoplatform.services.rest.ResponseFilter;
 
 @Filter
+@Path("v1/social/{x:.*}")
 public class JSONPResponseFilter implements ResponseFilter {
 
   private HttpServletRequest httpRequest;

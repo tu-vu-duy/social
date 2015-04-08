@@ -1,13 +1,11 @@
-package org.exoplatform.social.service.rest;
+package org.exoplatform.social.rest.filter;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.ws.rs.Path;
 import javax.ws.rs.core.CacheControl;
@@ -25,16 +23,19 @@ import org.exoplatform.services.rest.Filter;
 import org.exoplatform.services.rest.GenericContainerResponse;
 import org.exoplatform.services.rest.ResponseFilter;
 import org.exoplatform.services.rest.impl.ApplicationContextImpl;
-import org.exoplatform.social.service.rest.api.models.ResourceCollections;
-import org.json.JSONObject;
+import org.exoplatform.social.rest.api.RestProperties;
+import org.exoplatform.social.rest.api.RestUtils;
+import org.exoplatform.social.rest.entity.BaseEntity;
+import org.exoplatform.social.rest.entity.CollectionEntity;
+import org.exoplatform.social.service.rest.api.VersionResources;
 
 @Filter
-@Path("v1/social/{x:.*}")
-public class SocialRestResponseFilter implements ResponseFilter {
+@Path(VersionResources.VERSION_ONE + "/social/{x:.*}")
+public class SocialResponseFilter implements ResponseFilter {
   private static final String FIELDS_QUERY_PARAM = "fields";
   private static final String PATTERN_RFC1123    = "EEE, dd MMM yyyy HH:mm:ss zzz";
   private static final String DOUBLE_QUOTE       = "^\"|\"$";
-  private static final Log    LOG                = ExoLogger.getExoLogger(SocialRestResponseFilter.class);
+  private static final Log    LOG                = ExoLogger.getExoLogger(SocialResponseFilter.class);
   private static final String JSONP              = "jsonp";
   
   @Override
@@ -110,6 +111,7 @@ public class SocialRestResponseFilter implements ResponseFilter {
       theStringBuffer.append(")");
       
       responseBuilder.entity(theStringBuffer.toString());  
+      responseBuilder.type("text/javascript");
     } else {
       responseBuilder.entity(entity);
     }
@@ -125,34 +127,17 @@ public class SocialRestResponseFilter implements ResponseFilter {
   }
 
   private String serializeToJson(Object entity) {
-    if (ResourceCollections.class.isAssignableFrom(entity.getClass())) {
-      return new JSONObject((ResourceCollections)entity).toString();
-    } else if (entity instanceof Map) {
-      return new JSONObject((Map<String, Object>)entity).toString();
-    }
-    
-    return StringUtils.EMPTY;
+    return entity.toString();
   }
 
-  @SuppressWarnings("unchecked")
   private Object filterProperties(Object entity, String outputFields) {
     List<String> returnedProperties = new ArrayList<String>();
     returnedProperties.addAll(Arrays.asList(outputFields.split(",")));
-    
-    if (ResourceCollections.class.isAssignableFrom(entity.getClass())) {
-      ResourceCollections rc = (ResourceCollections)entity;
-      return rc.getCollectionByFields(returnedProperties);
-    } else if (entity instanceof Map) {
-      Map<String, Object> elementInfo = (Map<String, Object>)entity;
-      Map<String, Object> map = new LinkedHashMap<String, Object>();
-      for (Map.Entry<String, Object> entry : elementInfo.entrySet()) {
-        if (returnedProperties.contains(entry.getKey())) {
-          map.put(entry.getKey(), entry.getValue());
-        }
-      }
-      return map;
+    if (CollectionEntity.class.isAssignableFrom(entity.getClass())) {
+      return ((CollectionEntity) entity).extractInfo(returnedProperties);
+    } else if (entity instanceof BaseEntity) {
+      return RestUtils.extractInfo(((BaseEntity) entity).getDataEntity(), returnedProperties);
     }
-    
     return new Object();
   }
   

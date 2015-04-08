@@ -18,6 +18,7 @@ package org.exoplatform.social.service.test;
 
 import org.exoplatform.commons.testing.BaseExoContainerTestSuite;
 import org.exoplatform.commons.testing.ConfigTestCase;
+import org.exoplatform.social.rest.impl.activity.ActivityRestResourcesTest;
 import org.exoplatform.social.service.rest.ActivitiesRestServiceTest;
 import org.exoplatform.social.service.rest.IdentityRestServiceTest;
 import org.exoplatform.social.service.rest.LinkShareRestServiceTest;
@@ -49,6 +50,8 @@ import org.junit.runners.Suite.SuiteClasses;
   PeopleRestServiceTest.class,
   RestCheckerTest.class,
   SecurityManagerTest.class,
+
+  ActivityRestResourcesTest.class,
   UtilTest.class
   })
 @ConfigTestCase(AbstractServiceTest.class)
