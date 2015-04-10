@@ -18,6 +18,13 @@ package org.exoplatform.social.service.test;
 
 import org.exoplatform.commons.testing.BaseExoContainerTestSuite;
 import org.exoplatform.commons.testing.ConfigTestCase;
+import org.exoplatform.social.rest.impl.activity.ActivityRestResourcesTest;
+import org.exoplatform.social.rest.impl.identity.IdentityRestResourcesTest;
+import org.exoplatform.social.rest.impl.relationship.RelationshipsRestResourcesTest;
+import org.exoplatform.social.rest.impl.space.SpaceRestResourcesTest;
+import org.exoplatform.social.rest.impl.spacemembership.SpaceMembershipRestResourcesTest;
+import org.exoplatform.social.rest.impl.userrelationship.UsersRelationshipsRestResourcesTest;
+import org.exoplatform.social.rest.impl.users.UserRestResourcesTest;
 import org.exoplatform.social.service.rest.ActivitiesRestServiceTest;
 import org.exoplatform.social.service.rest.IdentityRestServiceTest;
 import org.exoplatform.social.service.rest.LinkShareRestServiceTest;
@@ -30,13 +37,6 @@ import org.exoplatform.social.service.rest.api.ActivityResourcesTest;
 import org.exoplatform.social.service.rest.api.ActivityStreamResourcesTest;
 import org.exoplatform.social.service.rest.api.IdentityResourcesTest;
 import org.exoplatform.social.service.rest.api.VersionResourcesTest;
-import org.exoplatform.social.service.rest.impl.activity.ActivitySocialRestServiceTest;
-import org.exoplatform.social.service.rest.impl.identity.IdentitySocialRestServiceTest;
-import org.exoplatform.social.service.rest.impl.relationship.RelationshipsRestServiceTest;
-import org.exoplatform.social.service.rest.impl.space.SpaceSocialRestServiceTest;
-import org.exoplatform.social.service.rest.impl.spacemembership.SpaceMembershipRestServiceTest;
-import org.exoplatform.social.service.rest.impl.userrelationship.UserRelationshipsRestServiceTest;
-import org.exoplatform.social.service.rest.impl.users.UsersRestserviceTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -57,13 +57,13 @@ import org.junit.runners.Suite.SuiteClasses;
   RestCheckerTest.class,
   SecurityManagerTest.class,
   UtilTest.class,
-  ActivitySocialRestServiceTest.class,
-  IdentitySocialRestServiceTest.class,
-  RelationshipsRestServiceTest.class,
-  SpaceSocialRestServiceTest.class,
-  SpaceMembershipRestServiceTest.class,
-  UserRelationshipsRestServiceTest.class,
-  UsersRestserviceTest.class
+  ActivityRestResourcesTest.class,
+  IdentityRestResourcesTest.class,
+  RelationshipsRestResourcesTest.class,
+  SpaceRestResourcesTest.class,
+  SpaceMembershipRestResourcesTest.class,
+  UsersRelationshipsRestResourcesTest.class,
+  UserRestResourcesTest.class
   })
 @ConfigTestCase(AbstractServiceTest.class)
 public class InitContainerTestSuite extends BaseExoContainerTestSuite {
