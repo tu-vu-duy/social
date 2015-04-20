@@ -42,9 +42,6 @@ import java.util.regex.Pattern;
 
 import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemExistsException;
-import javax.persistence.EntityManager;
-import javax.persistence.Persistence;
-import javax.persistence.PersistenceContext;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -64,7 +61,6 @@ import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.mysql.MysqlDBConnect;
 import org.exoplatform.social.core.mysql.model.ActivityEntity;
-import org.exoplatform.social.core.mysql.model.ActivityStreamEntity;
 import org.exoplatform.social.core.mysql.model.StreamItem;
 import org.exoplatform.social.core.mysql.model.StreamItemImpl;
 import org.exoplatform.social.core.relationship.model.Relationship;
@@ -117,9 +113,6 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
   private MysqlDBConnect dbConnect;
   
 
-  @PersistenceContext(unitName = "org.exoplatform.social.hibernate-activity")
-  protected EntityManager entityManager;
-  
   private static final Log LOG = ExoLogger.getLogger(ActivityMysqlStorageImpl.class);
   
   public ActivityMysqlStorageImpl(final RelationshipStorage relationshipStorage,
@@ -134,8 +127,6 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
     this.spaceStorage = spaceStorage;
     this.dbConnect = dbConnect;
     this.activityProcessors = new TreeSet<ActivityProcessor>(processorComparator());
-    //
-    this.entityManager = Persistence.createEntityManagerFactory("org.exoplatform.social.hibernate-activity").createEntityManager();
   }
   
   @Override
@@ -143,10 +134,6 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
 
 	}
 
-  public ActivityEntity findActivity(String activityId) throws ActivityStorageException {
-    return entityManager.find(ActivityEntity.class, activityId);
-  }
-  
 	@Override
 	public ExoSocialActivity getActivity(String activityId) throws ActivityStorageException {
 
@@ -263,7 +250,7 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
     activity.setType(rs.getString("activityType"));
     
     
-    ActivityStream stream = new ActivityStreamEntity();
+    ActivityStream stream = new ActivityStreamImpl();
     String ownerIdentityId = rs.getString("ownerIdentityId");
     Identity owner = identityStorage.findIdentityById(ownerIdentityId);
     stream.setType(owner.getProviderId());
@@ -843,13 +830,12 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
       activity.setStreamOwner(remoter);
       activity.setStreamId(owner.getId());
       //
-      ActivityStream stream = new ActivityStreamEntity();
+      ActivityStream stream = new ActivityStreamImpl();
       stream.setId(owner.getId());
       stream.setPrettyId(remoter);
       stream.setType(owner.getProviderId());
       activity.setActivityStream(stream);
       
-      saveEntity(stream);
     }
     activity.setReplyToId(new String[]{});
     
@@ -897,20 +883,7 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
     //fillStream(null, activity);
     newStreamItemForNewActivity(owner, activity);
     
-    saveEntity(activity);
-    
-    
     return null;
-  }
-
-  private void saveEntity(Object entity) {
-    try {
-      entityManager.getTransaction().begin();
-      entityManager.persist(entity);
-      entityManager.getTransaction().commit();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
   
   private int fillPreparedStatementFromActivity(Identity owner,
@@ -1088,11 +1061,6 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
       activity.setTemplateParams(dbActivity.getTemplateParams());
     }
     activity.setUpdated(currentMillis);
-    try {
-      entityManager.persist(activity);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
     //insert to mysql activity table
     Connection dbConnection = null;
     PreparedStatement preparedStatement = null;
@@ -1132,8 +1100,6 @@ public class ActivityMysqlStorageImpl extends ActivityStorageImpl {
         LOG.error("Cannot close statement or connection:", e.getMessage());
       }
       //
-      saveEntity(activity);
-      
     }
     
     updateStreamItemTime(activity.getId(), dbActivity.getUpdated().getTime(), activity.isHidden());

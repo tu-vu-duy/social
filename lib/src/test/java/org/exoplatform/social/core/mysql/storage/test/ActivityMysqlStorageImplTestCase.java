@@ -114,8 +114,6 @@ public class ActivityMysqlStorageImplTestCase extends AbstractCoreTest {
     mysqlStorage.saveActivity(rootIdentity, activity);
     
     
-    System.out.println(mysqlStorage.findActivity(activity.getId()));
-    
     assertNotNull(activity.getId());
     
     ExoSocialActivity rs = mysqlStorage.getActivity(activity.getId());

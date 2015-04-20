@@ -14,7 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see<http://www.gnu.org/licenses/>.
  */
-package org.exoplatform.social.core.mysql.model;
+package org.exoplatform.social.core.entity;
+
+import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -24,6 +26,8 @@ import javax.persistence.Table;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.activity.model.ActivityStream;
+import org.exoplatform.social.core.activity.model.ActivityStream.Type;
+import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 
@@ -31,8 +35,9 @@ import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
  * ActivityStream implementation.
  */
 @Entity
-@Table(name="stream_item")
-public class ActivityStreamEntity implements ActivityStream {
+@Table(name="ACTIVITY_STREAM")
+public class ActivityStreamEntity implements Serializable {
+  private static final long serialVersionUID = -2217886738127777281L;
 
   /**
    * Logger.
@@ -71,12 +76,11 @@ public class ActivityStreamEntity implements ActivityStream {
    * Permalink link to this stream (url on Social).
    */
   private String permaLink;
+  
+  public ActivityStreamEntity() {
+  }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setType(final String name) {
-    //TODO this is not loosely coupled
     if (name.equals(OrganizationIdentityProvider.NAME)) {
       setType(Type.USER);
     } else if (name.equals(SpaceIdentityProvider.NAME)) {
@@ -86,87 +90,62 @@ public class ActivityStreamEntity implements ActivityStream {
     }
   }
 
-  /**
-   * @{inheritDoc}
-   */
   public final String getId() {
     return id;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setId(final String uuid) {
     this.id = uuid;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final String getPrettyId() {
     return prettyId;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setPrettyId(final String sPrettyId) {
     prettyId = sPrettyId;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final Type getType() {
     return type;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setType(final Type sType) {
     type = sType;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final String getFaviconUrl() {
     return faviconUrl;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setFaviconUrl(final String sFaviconUrl) {
     faviconUrl = sFaviconUrl;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final String getTitle() {
     return title;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setTitle(final String sTitle) {
     title = sTitle;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final String getPermaLink() {
     return permaLink;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public final void setPermaLink(final String sPermaLink) {
     permaLink = sPermaLink;
+  }
+  
+  public ActivityStream getSocActivityStream() {
+    ActivityStream activityStream = new ActivityStreamImpl();
+    activityStream.setId(id);
+    activityStream.setType(type);
+    activityStream.setTitle(title);
+    activityStream.setPermaLink(permaLink);
+    activityStream.setPrettyId(prettyId);
+    activityStream.setFaviconUrl(faviconUrl);
+    return activityStream;
   }
 }

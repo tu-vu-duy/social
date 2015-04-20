@@ -11,7 +11,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.exoplatform.social.core.activity.model.ActivityStream;
+import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 
@@ -179,7 +179,7 @@ public class ActivityEntity extends Activity implements ExoSocialActivity {
     this.userId = userId;
   }
 
-  public final void setActivityStream(final ActivityStream providedAS) {
+  public final void setActivityStream(final org.exoplatform.social.core.activity.model.ActivityStream providedAS) {
     activityStream = providedAS;
   }
 
@@ -326,9 +326,9 @@ public class ActivityEntity extends Activity implements ExoSocialActivity {
   }
 
   @Override
-  public ActivityStream getActivityStream() {
+  public org.exoplatform.social.core.activity.model.ActivityStream getActivityStream() {
     if (activityStream == null) {
-      activityStream = new ActivityStreamEntity();
+      activityStream = new ActivityStreamImpl();
     }
     return activityStream;
   }
