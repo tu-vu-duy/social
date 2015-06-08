@@ -18,7 +18,6 @@ package org.exoplatform.social.core.manager;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -31,6 +30,9 @@ import org.exoplatform.social.core.ActivityProcessor;
 import org.exoplatform.social.core.BaseActivityProcessorPlugin;
 import org.exoplatform.social.core.activity.ActivitiesRealtimeListAccess;
 import org.exoplatform.social.core.activity.ActivitiesRealtimeListAccess.ActivityType;
+import org.exoplatform.social.core.activity.ActivityLifeCycle;
+import org.exoplatform.social.core.activity.ActivityListener;
+import org.exoplatform.social.core.activity.ActivityListenerPlugin;
 import org.exoplatform.social.core.activity.CommentsRealtimeListAccess;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
@@ -59,6 +61,8 @@ public class ActivityManagerImpl implements ActivityManager {
 
   /** spaceService */
   protected SpaceService                 spaceService;
+  
+  protected ActivityLifeCycle            activityLifeCycle = new ActivityLifeCycle();
 
   /**
    * Default limit for deprecated methods to get maximum number of activities.
@@ -80,7 +84,12 @@ public class ActivityManagerImpl implements ActivityManager {
    * {@inheritDoc}
    */
   public void saveActivityNoReturn(Identity streamOwner, ExoSocialActivity newActivity) {
+    if (!streamOwner.isEnable()) {
+      LOG.warn("Activity could not be saved. Owner has been disabled.");
+      return;
+    }
     activityStorage.saveActivity(streamOwner, newActivity);
+    activityLifeCycle.saveActivity(getActivity(newActivity.getId()));
   }
 
   /**
@@ -143,6 +152,7 @@ public class ActivityManagerImpl implements ActivityManager {
   public void saveComment(ExoSocialActivity existingActivity, ExoSocialActivity newComment) throws
           ActivityStorageException {
     activityStorage.saveComment(existingActivity, newComment);
+    activityLifeCycle.saveComment(activityStorage.getActivity(newComment.getId()));
   }
 
   /**
@@ -174,6 +184,7 @@ public class ActivityManagerImpl implements ActivityManager {
 
     existingActivity.setTitle(null);
     existingActivity.setBody(null);
+    existingActivity.setTemplateParams(null);
 
     String[] identityIds = existingActivity.getLikeIdentityIds();
     if (ArrayUtils.contains(identityIds, identity.getId())) {
@@ -183,6 +194,7 @@ public class ActivityManagerImpl implements ActivityManager {
     identityIds = (String[]) ArrayUtils.add(identityIds, identity.getId());
     existingActivity.setLikeIdentityIds(identityIds);
     updateActivity(existingActivity);
+    activityLifeCycle.likeActivity(existingActivity);
   }
 
   /**
@@ -191,6 +203,7 @@ public class ActivityManagerImpl implements ActivityManager {
   public void deleteLike(ExoSocialActivity activity, Identity identity) {
     activity.setTitle(null);
     activity.setBody(null);
+    activity.setTemplateParams(null);
     String[] identityIds = activity.getLikeIdentityIds();
     if (ArrayUtils.contains(identityIds, identity.getId())) {
       identityIds = (String[]) ArrayUtils.removeElement(identityIds, identity.getId());
@@ -199,6 +212,25 @@ public class ActivityManagerImpl implements ActivityManager {
     } else {
       LOG.warn("activity is not liked by identity: " + identity);
     }
+  }
+
+  @Override
+  public void addActivityEventListener(ActivityListenerPlugin activityListenerPlugin) {
+    registerActivityListener(activityListenerPlugin);   
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  public void registerActivityListener(ActivityListener listener) {
+    activityLifeCycle.addListener(listener);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public void unregisterActivityListener(ActivityListener listener) {
+    activityLifeCycle.removeListener(listener);
   }
 
 
@@ -255,6 +287,13 @@ public class ActivityManagerImpl implements ActivityManager {
   /**
    * {@inheritDoc}
    */
+  public RealtimeListAccess<ExoSocialActivity> getActivitiesByPoster(Identity posterIdentity, String ... activityTypes) {
+    return new ActivitiesRealtimeListAccess(activityStorage, ActivityType.POSTER_AND_TYPES_ACTIVITIES, posterIdentity, activityTypes);
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
   public void addProcessor(ActivityProcessor processor) {
     activityStorage.getActivityProcessors().add(processor);
     LOG.debug("added activity processor " + processor.getClass());
@@ -271,8 +310,9 @@ public class ActivityManagerImpl implements ActivityManager {
    * {@inheritDoc}
    */
   public ExoSocialActivity saveActivity(Identity streamOwner, ExoSocialActivity newActivity) {
-    saveActivityNoReturn(streamOwner, newActivity);
-    return newActivity;
+    ExoSocialActivity created = activityStorage.saveActivity(streamOwner, newActivity);
+    activityLifeCycle.saveActivity(getActivity(created.getId()));
+    return created;
   }
 
   /**
@@ -455,4 +495,5 @@ public class ActivityManagerImpl implements ActivityManager {
     Validate.notNull(newActivity.getUserId(), "activity.getUserId() must not be null!");
     return identityManager.getIdentity(newActivity.getUserId(), false);
   }
+
 }

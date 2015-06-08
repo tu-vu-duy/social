@@ -22,8 +22,24 @@
    xsi:schemaLocation="http://www.exoplatform.org/xml/ns/kernel_1_2.xsd http://www.exoplatform.org/xml/ns/kernel_1_2.xsd"
    xmlns="http://www.exoplatform.org/xml/ns/kernel_1_2.xsd">
 
-
-
+  <component>
+    <type>org.exoplatform.social.extras.injection.PatternInjectorConfig</type>
+    <init-params>
+      <value-param>
+        <name>user-suffix-length</name>
+        <value>4</value><!-- it's suffix length of user, -1 without suffix pattern -->
+      </value-param>
+      <value-param>
+        <name>space-suffix-length</name>
+        <value>5</value><!-- it's suffix length of space name, -1 without suffix pattern -->
+      </value-param>
+      <value-param>
+        <name>user-password-default</name>
+        <value>gtngtn</value><!-- it's user's password, default is "exo" -->
+      </value-param>
+    </init-params>
+  </component>
+  
   <component>
     <type>org.exoplatform.services.bench.DataInjectorService</type>
   </component>
@@ -43,11 +59,15 @@
   <component>
     <type>org.exoplatform.social.extras.injection.ActivityInjector</type>
   </component>
+  
+  <component>
+    <type>org.exoplatform.social.extras.injection.ActivityMentionInjector</type>
+  </component>
 
   <component>
     <type>org.exoplatform.social.extras.injection.RelationshipInjector</type>
   </component>
-
+ 
   <component>
     <key>org.exoplatform.portal.config.UserACL</key>
     <type>org.exoplatform.portal.config.UserACL</type>
@@ -147,6 +167,16 @@
     <key>org.exoplatform.social.core.storage.impl.ActivityStorageImpl</key>
     <type>org.exoplatform.social.core.storage.synchronization.SynchronizedActivityStorage</type>
   </component>
+  
+  <component>
+    <key>org.exoplatform.social.core.storage.api.ActivityStreamStorage</key>
+    <type>org.exoplatform.social.core.storage.cache.CachedActivityStreamStorage</type>
+  </component>
+  
+  <component>
+    <key>org.exoplatform.social.core.storage.impl.ActivityStreamStorageImpl</key>
+    <type>org.exoplatform.social.core.storage.synchronization.SynchronizedActivityStreamStorage</type>
+  </component>
 
   <!--
     Identity storage components.
@@ -185,6 +215,10 @@
   <component>
     <key>org.exoplatform.social.core.storage.impl.SpaceStorageImpl</key>
     <type>org.exoplatform.social.core.storage.synchronization.SynchronizedSpaceStorage</type>
+  </component>
+  
+  <component>
+    <type>org.exoplatform.social.core.updater.UserActivityStreamMigration</type>
   </component>
 
   <component>
@@ -647,6 +681,13 @@
           <value>org.exoplatform.social.core.chromattic.entity.ActivityMonthEntity</value>
           <value>org.exoplatform.social.core.chromattic.entity.ActivityYearEntity</value>
           <value>org.exoplatform.social.core.chromattic.entity.ActivityParameters</value>
+          
+          <value>org.exoplatform.social.core.chromattic.entity.StreamsEntity</value>
+          <value>org.exoplatform.social.core.chromattic.entity.ActivityRefListEntity</value>
+          <value>org.exoplatform.social.core.chromattic.entity.ActivityRefDayEntity</value>
+          <value>org.exoplatform.social.core.chromattic.entity.ActivityRefMonthEntity</value>
+          <value>org.exoplatform.social.core.chromattic.entity.ActivityRefYearEntity</value>
+          <value>org.exoplatform.social.core.chromattic.entity.ActivityRef</value>
 
           <value>org.exoplatform.social.core.chromattic.entity.SpaceRootEntity</value>
           <value>org.exoplatform.social.core.chromattic.entity.SpaceEntity</value>

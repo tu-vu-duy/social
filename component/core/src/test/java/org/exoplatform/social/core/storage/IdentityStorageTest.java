@@ -4,6 +4,21 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.chromattic.api.ChromatticSession;
+import org.exoplatform.commons.chromattic.ChromatticManager;
+import org.exoplatform.container.PortalContainer;
+import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.GroupHandler;
+import org.exoplatform.services.organization.Membership;
+import org.exoplatform.services.organization.MembershipHandler;
+import org.exoplatform.services.organization.MembershipType;
+import org.exoplatform.services.organization.MembershipTypeHandler;
+import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.organization.User;
+import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
+import org.exoplatform.social.core.chromattic.entity.DisabledEntity;
+import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
+import org.exoplatform.social.core.chromattic.entity.ProviderRootEntity;
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
@@ -11,6 +26,7 @@ import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvide
 import org.exoplatform.social.core.model.AvatarAttachment;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.service.LinkProvider;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
@@ -34,11 +50,13 @@ public class IdentityStorageTest extends AbstractCoreTest {
   private SpaceStorage spaceStorage;
   private List<Identity> tearDownIdentityList;
   private List<Space> tearDownSpaceList;
+  private SocialChromatticLifeCycle lifecycle;
 
   public void setUp() throws Exception {
     super.setUp();
     identityStorage = (IdentityStorage) getContainer().getComponentInstanceOfType(IdentityStorageImpl.class);
     spaceStorage = (SpaceStorage) getContainer().getComponentInstanceOfType(SpaceStorageImpl.class);
+    lifecycle = lifecycleLookup();
     assertNotNull("identityStorage must not be null", identityStorage);
     tearDownIdentityList = new ArrayList<Identity>();
     tearDownSpaceList = new ArrayList<Space>();
@@ -53,12 +71,48 @@ public class IdentityStorageTest extends AbstractCoreTest {
     }
     super.tearDown();
   }
+  
+  public void testUpgradeIdentity() {
+    Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, "identity1");
+    identityStorage.saveIdentity(tobeSavedIdentity);
+
+    tearDownIdentityList.add(tobeSavedIdentity);
+
+    // Get new session
+    ChromatticSession session = lifecycle.getSession();
+    synchronized (this) {
+      try {
+        System.out.println("waiting 60 seconds ...");
+        this.wait(60 * 1000);
+      } catch (InterruptedException e1) {
+        System.out.println("InterruptedException but is Session close? " + session.isClosed());
+      }
+    }
+    System.out.println("JCRSession is alive? " + session.getJCRSession().isLive());
+    System.out.println("Session is close? " + session.isClosed());
+
+    // System.out.println("New session with timeout = " +timeout);
+    try {
+      IdentityStorageImpl impl = (IdentityStorageImpl)identityStorage;
+      ProviderRootEntity providerRoot = impl.getProviderRoot();
+      String path = providerRoot.getProviders().get(OrganizationIdentityProvider.NAME).getPath();
+      System.out.println(path);
+    } catch (NullPointerException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private static SocialChromatticLifeCycle lifecycleLookup() {
+    PortalContainer container = PortalContainer.getInstance();
+    ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
+    return (SocialChromatticLifeCycle) manager.getLifeCycle(SocialChromatticLifeCycle.SOCIAL_LIFECYCLE_NAME);
+  }
 
   /**
    * Tests {@link IdenityStorage#saveIdentity(Identity)}
    *
    */
-  @MaxQueryNumber(100)
+  @MaxQueryNumber(186)
   public void testSaveIdentity() {
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, "identity1");
     identityStorage.saveIdentity(tobeSavedIdentity);
@@ -77,12 +131,39 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(gotIdentity);
     
   }
-  
+
+  /**
+   * Tests {@link IdenityStorage#processEnabledIdentity(Identity)}
+   */
+  @MaxQueryNumber(99)
+  public void testEnableIdentity() {
+    final String remoteUser = "user";
+    Identity identity = new Identity(OrganizationIdentityProvider.NAME, remoteUser);
+    identityStorage.saveIdentity(identity);
+    //
+    assertNotNull(identity.getId());
+    //
+    identityStorage.processEnabledIdentity(identity, false);
+    IdentityEntity got = lifecycle.getSession().findById(IdentityEntity.class, identity.getId());
+    //
+    assertNotNull(got);
+    //
+    DisabledEntity mixin = lifecycle.getSession().getEmbedded(got, DisabledEntity.class);
+    assertNotNull(mixin);
+    //
+    identityStorage.processEnabledIdentity(identity, true);
+    //
+    mixin = lifecycle.getSession().getEmbedded(got, DisabledEntity.class);
+    assertNull(mixin);
+
+    tearDownIdentityList.add(identity);
+  }
+
   /**
    * Tests {@link IdenityStorage#deleteIdentity(Identity)}
    *
    */
-  @MaxQueryNumber(350)
+  @MaxQueryNumber(807)
   public void testDeleteIdentity() {
     final String username = "username";
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, username);
@@ -120,7 +201,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityById(String)}
    *
    */
-  @MaxQueryNumber(50)
+  @MaxQueryNumber(75)
   public void testFindIdentityById() {
     final String remoteUser = "identity1";
     Identity toSaveIdentity = new Identity(OrganizationIdentityProvider.NAME, remoteUser);
@@ -153,7 +234,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentity(String, String)}
    *
    */
-  @MaxQueryNumber(50)
+  @MaxQueryNumber(72)
   public void testFindIdentity() {
     final String userName = "username";
 
@@ -173,7 +254,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#saveProfile(Profile)}
    *
    */
-  @MaxQueryNumber(100)
+  @MaxQueryNumber(108)
   public void testSaveProfile() {
     final String userName = "username";
     final String firstName = "FirstName";
@@ -204,7 +285,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#loadProfile(Profile)}
    *
    */
-  @MaxQueryNumber(150)
+  @MaxQueryNumber(210)
   public void testLoadProfile() throws Exception {
     final String username = "username";
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, username);
@@ -249,7 +330,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(identityStorage.findIdentity(OrganizationIdentityProvider.NAME, username));
   }
 
-  @MaxQueryNumber(70)
+  @MaxQueryNumber(99)
   public void testLoadProfileByReloadCreatedProfileNode() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -279,7 +360,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(identityStorage.findIdentity(OrganizationIdentityProvider.NAME, remoteId));
   }
 
-  @MaxQueryNumber(100)
+  @MaxQueryNumber(108)
   public void testFindIdentityByExistName() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -300,7 +381,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     assertEquals(1, result.size());
   }
 
-  @MaxQueryNumber(650)
+  @MaxQueryNumber(1080)
   public void testFindManyIdentitiesByExistName() throws Exception {
     final String providerId = "organization";
 
@@ -325,7 +406,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     assertEquals(total, result.size());
   }
 
-  @MaxQueryNumber(60)
+  @MaxQueryNumber(99)
   public void testFindIdentityByNotExistName() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -350,7 +431,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#getIdentitiesByProfileFilter(String, ProfileFilter, int, int, boolean)}
    *
    */
-  @MaxQueryNumber(300)
+  @MaxQueryNumber(582)
   public void testFindIdentityByProfileFilter() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -398,7 +479,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#getIdentitiesByProfileFilter(String, ProfileFilter, int, int, boolean)}
    *
    */
-  @MaxQueryNumber(670)
+  @MaxQueryNumber(1140)
   public void testFindManyIdentitiesByProfileFilter() throws Exception {
     String providerId = "organization";
 
@@ -434,11 +515,6 @@ public class IdentityStorageTest extends AbstractCoreTest {
   @MaxQueryNumber(1200)
   public void testGetIdentitiesByFirstCharacterOfNameCount() throws Exception {
     populateData();
-    populateData("root");
-    populateData("john");
-    populateData("mary");
-    populateData("raul");
-    populateData("ghost");
     final ProfileFilter filter = new ProfileFilter();
     filter.setFirstCharacterOfName('F');
     int idsCount = identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter);
@@ -446,6 +522,15 @@ public class IdentityStorageTest extends AbstractCoreTest {
     filter.setFirstCharacterOfName('L');
     idsCount = identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter);
     assertEquals("Number of identity must be " + idsCount, 5, idsCount);
+    
+    //disable username1
+    Identity identity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, "username1");
+    identityStorage.processEnabledIdentity(identity, false);
+    assertEquals(4, identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter));
+    
+    //enable username1
+    identityStorage.processEnabledIdentity(identity, true);
+    assertEquals(5, identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter));
   }
 
   /**
@@ -454,14 +539,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    */
   @MaxQueryNumber(1100)
   public void testGetIdentitiesByFirstCharacterOfName() throws Exception {
-    populateData();
-    
-    populateData("root");
-    populateData("john");
-    populateData("mary");
-    populateData("raul");
-    populateData("ghost");
-    
+    populateData();    
     final ProfileFilter filter = new ProfileFilter();
     filter.setFirstCharacterOfName('F');
     assertEquals(0, identityStorage.getIdentitiesByFirstCharacterOfName("organization", filter, 0, 1, false).size());
@@ -476,15 +554,8 @@ public class IdentityStorageTest extends AbstractCoreTest {
   @MaxQueryNumber(2000)
   public void testGetIdentitiesByProfileFilterCount() throws Exception {
     populateData();
-    
-    populateData("root");
-    populateData("john");
-    populateData("mary");
-    populateData("raul");
-    populateData("ghost");
-    
+
     ProfileFilter pf = new ProfileFilter();
-    
     int idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
     assertEquals(5, idsCount);
     
@@ -498,8 +569,14 @@ public class IdentityStorageTest extends AbstractCoreTest {
     idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
     assertEquals(5, idsCount);
     
-//    idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
-//    assertEquals(0, idsCount);
+    //disable username1
+    Identity identity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, "username1");
+    identityStorage.processEnabledIdentity(identity, false);
+    assertEquals(4, identityStorage.getIdentitiesByProfileFilterCount("organization", pf));
+    
+    //enable username1
+    identityStorage.processEnabledIdentity(identity, true);
+    assertEquals(5, identityStorage.getIdentitiesByProfileFilterCount("organization", pf));
   }
   
   /**
@@ -542,7 +619,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityByProfileFilterCount(String, ProfileFilter)}
    * 
    */
-  @MaxQueryNumber(150)
+  @MaxQueryNumber(264)
   public void testUpdateIdentity() throws Exception {
     String providerId = OrganizationIdentityProvider.NAME;
     String newProviderId = "space";
@@ -565,16 +642,30 @@ public class IdentityStorageTest extends AbstractCoreTest {
   /**
    *  Tests {@link IdenityStorage#getIdentitiesCount(String)}
    */
-  @MaxQueryNumber(650)
+  @MaxQueryNumber(765)
   public void testGetIdentitiesCount() throws Exception {
-    populateData();
-    int identitiesCount = identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME);
-    assertEquals("Number of identities must be " + identitiesCount, 5, identitiesCount);
+    int numberUser = 10;
+    int numberDisableUser = 5;
+    // create user
+    List<Identity> identities = new ArrayList<Identity>();
+    for (int i = 0; i < numberUser; i++) {
+      Identity identity = new Identity(OrganizationIdentityProvider.NAME, "user" + i);
+      identityStorage.saveIdentity(identity);
+      identities.add(identity);
+    }
+    assertEquals(10, identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME));
+    // disable users
+    for (int i = 0; i < numberDisableUser; i++) {
+      Identity identity = identities.get(i);
+      identityStorage.processEnabledIdentity(identity, false);
+    }
+    assertEquals(numberUser - numberDisableUser, identityStorage.getIdentitiesCount(OrganizationIdentityProvider.NAME));
   }
 
-  @MaxQueryNumber(700)
+  @MaxQueryNumber(2635)
   public void testGetSpaceMemberByProfileFilter() throws Exception {
     populateData();
+    populateUser("username4");
     
     Space space = new Space();
     space.setApp("app");
@@ -585,7 +676,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     space.setType(DefaultSpaceApplicationHandler.NAME);
     space.setVisibility(Space.PUBLIC);
     space.setPriority(Space.INTERMEDIATE_PRIORITY);
-    space.setGroupId("/space/space");
+    space.setGroupId(SpaceUtils.createGroup(space.getPrettyName(), "username4"));
     space.setUrl(space.getPrettyName());
     String[] managers = new String[] {};
     String[] members = new String[] {"username1", "username2", "username3"};
@@ -610,6 +701,10 @@ public class IdentityStorageTest extends AbstractCoreTest {
     
     profileFilter.setName("3");
     identities = identityStorage.getSpaceMemberIdentitiesByProfileFilter(space, profileFilter, Type.MEMBER, 0, 2);
+    assertEquals(1, identities.size());
+    
+    addUserToGroupWithMembership("username4", space.getGroupId(), MembershipTypeHandler.ANY_MEMBERSHIP_TYPE);
+    identities = identityStorage.getSpaceMemberIdentitiesByProfileFilter(space, new ProfileFilter(), Type.MANAGER, 0, 10);
     assertEquals(1, identities.size());
   }
   
@@ -690,6 +785,37 @@ public class IdentityStorageTest extends AbstractCoreTest {
       identity.setProfile(profile);
       tearDownIdentityList.add(identity);
       identityStorage.saveProfile(profile);
+    }
+  }
+  
+  private User populateUser(String name) {
+    OrganizationService os = SpaceUtils.getOrganizationService();
+    User user = os.getUserHandler().createUserInstance(name);
+    
+    try {
+      os.getUserHandler().createUser(user, false);
+    } catch (Exception e) {
+      return null;
+    }
+    return user;
+  }
+  
+  private static void addUserToGroupWithMembership(String remoteId, String groupId, String membership) {
+    OrganizationService organizationService = SpaceUtils.getOrganizationService();
+    try {
+      // TODO: checks whether user is already manager?
+      MembershipHandler membershipHandler = organizationService.getMembershipHandler();
+      Membership found = membershipHandler.findMembershipByUserGroupAndType(remoteId, groupId, membership);
+      if (found != null) {
+        return;
+      }
+      User user = organizationService.getUserHandler().findUserByName(remoteId);
+      MembershipType membershipType = organizationService.getMembershipTypeHandler().findMembershipType(membership);
+      GroupHandler groupHandler = organizationService.getGroupHandler();
+      Group existingGroup = groupHandler.findGroupById(groupId);
+      membershipHandler.linkMembership(user, existingGroup, membershipType, true);
+    } catch (Exception e) {
+      return;
     }
   }
 }

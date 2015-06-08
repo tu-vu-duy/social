@@ -19,13 +19,11 @@ package org.exoplatform.social.webui.connections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.identity.model.Identity;
-import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.webui.Utils;
@@ -39,11 +37,10 @@ import org.exoplatform.webui.core.UIApplication;
 import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 @ComponentConfigs({
   @ComponentConfig(
-    template =  "classpath:groovy/social/webui/connections/UIInvitations.gtmpl",
+    template =  "war:/groovy/social/webui/connections/UIInvitations.gtmpl",
     events = {
       @EventConfig(listeners = UIInvitations.ConfirmActionListener.class),
       @EventConfig(listeners = UIInvitations.IgnoreActionListener.class),
@@ -343,6 +340,7 @@ public class UIInvitations extends UIContainer {
         return;
       }
       Utils.getRelationshipManager().confirm(invitedIdentity, invitingIdentity);
+      Utils.clearCacheOnUserPopup();
       event.getRequestContext().addUIComponentToUpdateByAjax(uiInvitations);
     }
   }
@@ -371,6 +369,7 @@ public class UIInvitations extends UIContainer {
       }
       
       Utils.getRelationshipManager().deny(invitedIdentity, invitingIdentity);
+      Utils.clearCacheOnUserPopup();
       event.getRequestContext().addUIComponentToUpdateByAjax(uiInvitations);
     }
   }
@@ -391,21 +390,11 @@ public class UIInvitations extends UIContainer {
       UIProfileUserSearch uiSearch = uiInvitations.uiProfileUserSearch;
       
       String charSearch = ctx.getRequestParameter(OBJECTID);
-      
-      ResourceBundle resApp = ctx.getApplicationResourceBundle();
-
-      String defaultNameVal = resApp.getString(uiSearch.getId() + ".label.Name");
-      String defaultPosVal = resApp.getString(uiSearch.getId() + ".label.Position");
-      String defaultSkillsVal = resApp.getString(uiSearch.getId() + ".label.Skills");
-      
       ProfileFilter filter = uiInvitations.uiProfileUserSearch.getProfileFilter();
       
       try {
         uiInvitations.setSelectedChar(charSearch);
         if (charSearch != null) { // search by alphabet
-          ((UIFormStringInput) uiSearch.getChildById(UIProfileUserSearch.SEARCH)).setValue(defaultNameVal);
-          ((UIFormStringInput) uiSearch.getChildById(Profile.POSITION)).setValue(defaultPosVal);
-          ((UIFormStringInput) uiSearch.getChildById(Profile.EXPERIENCES_SKILLS)).setValue(defaultSkillsVal);
           filter.setName(charSearch);
           filter.setPosition("");
           filter.setSkills("");

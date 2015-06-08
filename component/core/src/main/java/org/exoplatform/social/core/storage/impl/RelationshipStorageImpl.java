@@ -18,33 +18,54 @@
 package org.exoplatform.social.core.storage.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+
+import javax.jcr.Node;
+import javax.jcr.NodeIterator;
 
 import org.chromattic.api.query.Ordering;
 import org.chromattic.api.query.QueryBuilder;
 import org.chromattic.api.query.QueryResult;
 import org.chromattic.core.query.QueryImpl;
+import org.exoplatform.commons.notification.impl.AbstractService;
+import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.social.core.chromattic.entity.DisabledEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.chromattic.entity.ProfileEntity;
 import org.exoplatform.social.core.chromattic.entity.RelationshipEntity;
 import org.exoplatform.social.core.chromattic.entity.RelationshipListEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
+import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
+import org.exoplatform.social.core.manager.RelationshipManager;
 import org.exoplatform.social.core.profile.ProfileFilter;
+import org.exoplatform.social.core.profile.ProfileLoader;
 import org.exoplatform.social.core.relationship.model.Relationship;
+import org.exoplatform.social.core.storage.IdentityStorageException;
 import org.exoplatform.social.core.storage.RelationshipStorageException;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
+import org.exoplatform.social.core.storage.api.ActivityStreamStorage;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.cache.CachedActivityStorage;
+import org.exoplatform.social.core.storage.cache.CachedActivityStreamStorage;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.storage.query.JCRProperties;
 import org.exoplatform.social.core.storage.query.WhereExpression;
+import org.exoplatform.social.core.storage.streams.StreamInvocationHelper;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
@@ -56,15 +77,26 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   private static final Log LOG = ExoLogger.getLogger(RelationshipStorage.class);
 
   private final IdentityStorage identityStorage;
+  private RelationshipManager relationshipManager;
   private RelationshipStorage relationshipStorage;
   private CachedActivityStorage cachedActivityStorage;
+  private CachedActivityStreamStorage streamStorage;
 
   public RelationshipStorageImpl(IdentityStorage identityStorage) {
    this.identityStorage = identityStorage;
- }
+  }
 
   private enum Origin { FROM, TO }
-  
+
+  private RelationshipManager getRelationshipManager() {
+    
+    if (relationshipManager == null) {
+      PortalContainer container = PortalContainer.getInstance();
+      this.relationshipManager  = (RelationshipManager) container.getComponentInstanceOfType(RelationshipManager.class);
+    }
+    return relationshipManager;
+  }
+
   private CachedActivityStorage getCachedActivityStorage() {
     
     if (this.cachedActivityStorage == null) {
@@ -75,6 +107,16 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     return this.cachedActivityStorage;
   }
   
+  private CachedActivityStreamStorage getCachedActivityStreamStorage() {
+    
+    if (this.streamStorage == null) {
+      PortalContainer container = PortalContainer.getInstance();
+      this.streamStorage  = (CachedActivityStreamStorage) container.getComponentInstanceOfType(ActivityStreamStorage.class);
+    }
+    
+    return this.streamStorage;
+  }
+  
   private void putRelationshipToList(List<Relationship> relationships, RelationshipListEntity list) {
     if (list != null) {
       for (Map.Entry<String, RelationshipEntity> entry : list.getRelationships().entrySet()) {
@@ -83,7 +125,11 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         RelationshipEntity relationshipEntity = entry.getValue();
         IdentityEntity senderEntity = relationshipEntity.getFrom();
         IdentityEntity receiverEntity = relationshipEntity.getTo();
-
+        //
+        if (_getMixin(senderEntity, DisabledEntity.class, false) != null ||
+            _getMixin(receiverEntity, DisabledEntity.class, false) != null) {
+          continue;
+        }
         Identity sender = new Identity(senderEntity.getId());
         sender.setRemoteId(senderEntity.getRemoteId());
         sender.setProviderId(senderEntity.getProviderId());
@@ -102,14 +148,8 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
           loadProfile(receiver);
         }
 
-        if (relationshipEntity.isSender()) {
-          relationship.setSender(sender);
-          relationship.setReceiver(receiver);
-        }
-        else {
-          relationship.setSender(receiver);
-          relationship.setReceiver(sender);
-        }
+        relationship.setSender(sender);
+        relationship.setReceiver(receiver);
 
         if (SENDER.equals(entry.getValue().getParent().getName()) ||
             RECEIVER.equals(entry.getValue().getParent().getName())) {
@@ -126,16 +166,53 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     }
   }
 
-  private void loadProfile(Identity identity) {
-    Profile profile = new Profile(identity);
-    profile = identityStorage.loadProfile(profile);
-    identity.setProfile(profile);
+  private void putReceiverRelationshipToList(List<Relationship> relationships, RelationshipListEntity list, Identity receiver) {
+    if (list != null) {
+      for (Map.Entry<String, RelationshipEntity> entry : list.getRelationships().entrySet()) {
+        Relationship relationship = new Relationship(entry.getValue().getId());
+
+        RelationshipEntity relationshipEntity = entry.getValue();
+        IdentityEntity senderEntity = relationshipEntity.getFrom();
+        if (senderEntity.getId().equals(receiver.getId())) {
+          senderEntity = relationshipEntity.getTo();
+        }
+
+        Identity sender = new Identity(senderEntity.getId());
+        sender.setRemoteId(senderEntity.getRemoteId());
+        sender.setProviderId(senderEntity.getProviderId());
+        ProfileEntity senderProfileEntity = senderEntity.getProfile();
+
+        if (senderProfileEntity != null) {
+          loadProfile(sender);
+        }
+
+        if (receiver.getProfile() != null) {
+          loadProfile(receiver);
+        }
+
+        relationship.setSender(sender);
+        relationship.setReceiver(receiver);
+        relationship.setStatus(Relationship.Type.PENDING);
+
+       relationships.add(relationship);
+      }
+    }
+  }
+  
+  private void loadProfile(final Identity identity) {
+    ProfileLoader loader = new ProfileLoader() {
+      public Profile load() throws IdentityStorageException {
+        Profile profile = new Profile(identity);
+        return identityStorage.loadProfile(profile);
+      }
+    };
+    identity.setProfileLoader(loader);
   }
 
   private List<Identity> getIdentitiesFromRelationship(Iterator<RelationshipEntity> it, Origin origin, long offset, long limit) {
 
     //
-    List<Identity> identities = new ArrayList<Identity>();
+    Set<Identity> identities = new LinkedHashSet<Identity>();
     int i = 0;
 
     _skip(it, offset);
@@ -144,25 +221,26 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     while (it.hasNext()) {
 
       RelationshipEntity relationshipEntity = it.next();
+      IdentityEntity identityEntity;
 
       switch (origin) {
 
         case FROM:
-          identity = createIdentityFromEntity(relationshipEntity.getFrom());
+          identityEntity = relationshipEntity.getFrom();
+          identity = createIdentityFromEntity(identityEntity);
           
-          //remove duplicated
-          if (identities.indexOf(identity) == -1) {
+          if (identity.isEnable()) {
             identities.add(identity);
           }
           break;
 
         case TO:
-          identity = createIdentityFromEntity(relationshipEntity.getTo());
-          //remove duplicated
-          if (identities.indexOf(identity) == -1) {
+          identityEntity = relationshipEntity.getTo();
+          identity = createIdentityFromEntity(identityEntity);
+
+          if (identity.isEnable()) {
             identities.add(identity);
           }
-
           break;
       }
 
@@ -172,9 +250,38 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
 
     }
 
-    return identities;
+    return new ArrayList<Identity>(identities);
   }
 
+  private List<Identity> getIdentitiesFromRelationship(Iterator<RelationshipEntity> it, Identity current, long offset, long limit) {
+    //
+    Set<Identity> identities = new LinkedHashSet<Identity>();
+    int i = 0;
+
+    _skip(it, offset);
+
+    Identity identity = null;
+    while (it.hasNext()) {
+      RelationshipEntity relationshipEntity = it.next();
+      
+      IdentityEntity entity = relationshipEntity.getFrom();
+      if (entity.getId().equals(current.getId())) {
+        entity = relationshipEntity.getTo();
+      }
+      
+      identity = createIdentityFromEntity(entity);
+      if (identity.isEnable()) {
+        identities.add(identity);
+        if (limit != -1 && limit > 0 && ++i >= limit) {
+          break;
+        }
+      }
+
+    }
+
+    return new ArrayList<Identity>(identities);
+  }
+  
   private Identity createIdentityFromEntity(IdentityEntity entity) {
 
     Identity identity = identityStorage.findIdentityById(entity.getId());
@@ -209,6 +316,9 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     
     while(result.hasNext()) {
       IdentityEntity current = result.next().getIdentity();
+      if (_getMixin(current, DisabledEntity.class, false) != null) {
+        continue;
+      }
       Identity i = new Identity(current.getProviderId(), current.getRemoteId());
       i.setId(current.getId());
       found.add(i);
@@ -234,10 +344,17 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
 
     //
     StorageUtils.applyFilter(whereExpression, filter);
-
     //
-    return builder.where(whereExpression.toString()).get().objects().size();
-
+    QueryResult<ProfileEntity> result = builder.where(whereExpression.toString()).get().objects();
+    int number = 0;
+    while (result.hasNext()) {
+      IdentityEntity current = result.next().getIdentity();
+      if (_getMixin(current, DisabledEntity.class, false) == null) {
+        ++number;
+      }
+    }
+    //
+    return number;
   }
 
   private RelationshipStorage getStorage() {
@@ -256,36 +373,53 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     IdentityEntity identity2 = _findById(IdentityEntity.class, identityId2);
 
     RelationshipEntity createdRelationship = identity1.createRelationship();
-    RelationshipEntity symmetricalRelationship = identity1.createRelationship();
-
+    RelationshipEntity symmetricalRelationship = identity2.createRelationship();
+    
     switch (relationship.getStatus()) {
 
       case PENDING:
         identity1.getSender().getRelationships().put(identity2.getRemoteId(), createdRelationship);
         identity2.getReceiver().getRelationships().put(identity1.getRemoteId(), symmetricalRelationship);
+        
+        createdRelationship.setFrom(identity1);
+        createdRelationship.setTo(identity2);
+        
+        symmetricalRelationship.setFrom(identity1);
+        symmetricalRelationship.setTo(identity2);
+        
         break;
 
       case CONFIRMED:
         identity1.getRelationship().getRelationships().put(identity2.getRemoteId(), createdRelationship);
         identity2.getRelationship().getRelationships().put(identity1.getRemoteId(), symmetricalRelationship);
+        
+        createdRelationship.setFrom(identity1);
+        createdRelationship.setTo(identity2);
+        
+        symmetricalRelationship.setFrom(identity2);
+        symmetricalRelationship.setTo(identity1);
+        
         break;
 
       case IGNORED:
         identity1.getIgnore().getRelationships().put(identity2.getRemoteId(), createdRelationship);
-        identity2.getIgnored().getRelationships().put(identity2.getRemoteId(), symmetricalRelationship);
+        identity2.getIgnored().getRelationships().put(identity1.getRemoteId(), symmetricalRelationship);
+        
+        createdRelationship.setFrom(identity1);
+        createdRelationship.setTo(identity2);
+        
+        symmetricalRelationship.setFrom(identity1);
+        symmetricalRelationship.setTo(identity2);
+        
         break;
 
     }
 
     long createdTimeStamp = System.currentTimeMillis();
-    createdRelationship.setFrom(identity1);
-    createdRelationship.setTo(identity2);
     createdRelationship.setReciprocal(symmetricalRelationship);
     createdRelationship.setStatus(relationship.getStatus().toString());
     createdRelationship.setCreatedTime(createdTimeStamp);
     
-    symmetricalRelationship.setFrom(identity2);
-    symmetricalRelationship.setTo(identity1);
     symmetricalRelationship.setReciprocal(createdRelationship);
     symmetricalRelationship.setStatus(relationship.getStatus().toString());
     symmetricalRelationship.setCreatedTime(createdTimeStamp);
@@ -321,6 +455,9 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
 
     RelationshipEntity savedRelationship = _findById(RelationshipEntity.class, relationship.getId());
     RelationshipEntity symmetricalRelationship = savedRelationship.getReciprocal();
+    
+    IdentityEntity sender = _findById(IdentityEntity.class, relationship.getSender().getId());
+    IdentityEntity receiver = _findById(IdentityEntity.class, relationship.getReceiver().getId());
 
     savedRelationship.setStatus(relationship.getStatus().toString());
     symmetricalRelationship.setStatus(relationship.getStatus().toString());
@@ -337,6 +474,13 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         
         break;
       case CONFIRMED:
+        
+        //measure the relationship is two ways when relationship is confirmed
+        savedRelationship.setFrom(sender);
+        savedRelationship.setTo(receiver);
+        
+        symmetricalRelationship.setFrom(receiver);
+        symmetricalRelationship.setTo(sender);
 
         // Move to relationship
         savedRelationship.getParent().getParent().getRelationship().getRelationships()
@@ -345,12 +489,17 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         symmetricalRelationship.getParent().getParent().getRelationship().getRelationships()
             .put(symmetricalRelationship.getName(), symmetricalRelationship);
         
+        updateRelationshipStatistic(sender, true);
+        updateRelationshipStatistic(receiver, true);
+        
+        StreamInvocationHelper.connect(relationship.getSender(), relationship.getReceiver());
+        
         break;
       
       // TODO : IGNORED
     }
 
-    getSession().save();
+    //getSession().save();
 
     //
     LOG.debug(String.format(
@@ -373,6 +522,34 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     ));
 
     return savedRelationship;
+  }
+  
+  /**
+   * Updates the relationship statistic for the given user. 
+   * 
+   * @param identityEntity the identity
+   * @param isIncreaseCount determines the increase or decrease
+   * @throws NodeNotFoundException
+   */
+  private void updateRelationshipStatistic(IdentityEntity identityEntity, boolean isIncreaseCount) {
+    int newValue = 0;
+    if (identityEntity.hasProperty(IdentityEntity.RELATIONSHIP_NUMBER_PARAM)) {
+      String value = identityEntity.getProperties().get(IdentityEntity.RELATIONSHIP_NUMBER_PARAM);
+      newValue = Integer.valueOf(value);
+      if (isIncreaseCount) {
+        newValue++;
+      } else {
+        newValue--;
+      }
+    } else {
+      if (isIncreaseCount) {
+        newValue = 1;
+      }
+    }
+    
+    identityEntity.setProperty(IdentityEntity.RELATIONSHIP_NUMBER_PARAM, String.valueOf(newValue));
+
+    
   }
 
   protected List<Relationship> _getSenderRelationships(
@@ -430,7 +607,9 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
           break;
 
         case PENDING:
-          putRelationshipToList(relationships, receiverEntity.getReceiver());
+          //SOC-4283 : to work around the problem of wrong data with receiver relationship (sender and receiver value are exchanged)
+          //so we need a specific method to treat the problem
+          putReceiverRelationshipToList(relationships, receiverEntity.getReceiver(), receiver);
           break;
 
         // TODO : IGNORED
@@ -481,7 +660,7 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     IdentityEntity identityEntity2 = _findById(IdentityEntity.class, identity2.getId());
 
     // CONFIRMED
-    RelationshipEntity got = identityEntity1.getRelationship().getRelationships().get(identityEntity2.getName());
+    RelationshipEntity got = identityEntity1.getRelationship().getRelationships().get(identityEntity2.getName());    
 
     // PENDING
     if (got == null) {
@@ -530,6 +709,9 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         _createRelationship(relationship);
       }
       else {
+        //
+        StorageUtils.persist();
+        
         _saveRelationship(relationship);
       }
     }
@@ -552,14 +734,25 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       RelationshipEntity symmetricalRelationship = toDeleteRelationship.getReciprocal();
 
       IdentityEntity from = toDeleteRelationship.getFrom();
-      IdentityEntity to = toDeleteRelationship.getFrom();
+      IdentityEntity to = toDeleteRelationship.getTo();
+      
+      if(Relationship.Type.CONFIRMED.equals(relationship.getStatus())) {
+        updateRelationshipStatistic(from, false);
+        updateRelationshipStatistic(to, false);
+      }
 
       _removeById(RelationshipEntity.class, symmetricalRelationship.getId());
       _removeById(RelationshipEntity.class, relationship.getId());
       
-      getSession().save();
+      //getSession().save();
+      StorageUtils.persist();
+      
+      //getCachedActivityStreamStorage().deleteConnect(relationship.getSender(), relationship.getReceiver());
+      StreamInvocationHelper.deleteConnect(relationship.getSender(), relationship.getReceiver());
       
       getCachedActivityStorage().clearCache();
+      
+      
 
       //
       LOG.debug(String.format(
@@ -653,6 +846,12 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       return null;
     }
   }
+  
+  @Override
+  public boolean hasRelationship(Identity identity1, Identity identity2, String relationshipPath) throws RelationshipStorageException {
+    //it implemented on CachedRelationshipStorage
+    throw new RelationshipStorageException(RelationshipStorageException.Type.FAILED_TO_GET_RELATIONSHIP_OF_THEM, "hasRelationship() unsupported!"); 
+  }
 
   /**
    * {@inheritDoc}
@@ -697,6 +896,40 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       return new ArrayList<Relationship>();
     }
   }
+  
+  /**
+   * {@inheritDoc}
+   */
+  public List<Identity> getLastConnections(Identity identity, int limit) throws RelationshipStorageException {
+    //check the limit parameter
+    if (limit <= 0) {
+      return new ArrayList<Identity>();
+    }
+    //
+    List<Identity> identities = new ArrayList<Identity>();
+    try {
+      IdentityEntity identityEntity = _findById(IdentityEntity.class, identity.getId());
+      String relationshipNodePath = identityEntity.getPath() + StorageUtils.SLASH_STR + StorageUtils.SOC_RELATIONSHIP;
+      Node node = (Node) getSession().getJCRSession().getItem(relationshipNodePath);
+      NodeIterator iterator = AbstractService.getNodeIteratorOrderDESC(node);
+      while (iterator.hasNext() && limit > 0) {
+        Node relNode = iterator.nextNode();
+        if (relNode.getName().contains(StorageUtils.COLON_STR)) {
+          String remoteId = relNode.getName().split(StorageUtils.COLON_STR)[1];
+          Identity newIdentity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, remoteId);
+          identities.add(newIdentity);
+          limit--;
+        }
+      }
+    }
+    catch (Exception e) {
+      throw new RelationshipStorageException(
+           RelationshipStorageException.Type.FAILED_TO_GET_RELATIONSHIP,
+           e.getMessage());
+    }
+
+    return identities;
+  }
 
   /**
    * {@inheritDoc}
@@ -730,6 +963,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         else {
           gotIdentityEntity = currentRelationshipEntity.getTo();
         }
+        //
+        if (_getMixin(gotIdentityEntity, DisabledEntity.class, false) != null) {
+          continue;
+        }
 
         Identity newIdentity = new Identity(gotIdentityEntity.getId());
         newIdentity.setProviderId(gotIdentityEntity.getProviderId());
@@ -759,7 +996,9 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       IdentityEntity receiverEntity = _findById(IdentityEntity.class, receiver.getId());
 
       Iterator<RelationshipEntity> it = receiverEntity.getReceiver().getRelationships().values().iterator();
-      return getIdentitiesFromRelationship(it, Origin.TO, offset, limit);
+      //SOC-4283 : to work around the problem of wrong data with receiver relationship (sender and receiver value are exchanged)
+      //so we need a specific method to treat the problem
+      return getIdentitiesFromRelationship(it, receiver, offset, limit);
 
     }
     catch (NodeNotFoundException e) {
@@ -773,20 +1012,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   /**
    * {@inheritDoc}
    */
-   public int getIncomingRelationshipsCount(Identity receiver) throws RelationshipStorageException {
-
-     try {
-
-       IdentityEntity receiverEntity = _findById(IdentityEntity.class, receiver.getId());
-       return receiverEntity.getReceiver().getRelationships().size();
-       
-     }
-     catch (NodeNotFoundException e) {
-       throw new RelationshipStorageException(
-           RelationshipStorageException.Type.FAILED_TO_GET_RELATIONSHIP,
-           e.getMessage());
-     }
-   }
+  public int getIncomingRelationshipsCount(Identity receiver) throws RelationshipStorageException {
+    //
+    return getIncomingRelationships(receiver, 0, -1).size();
+  }
 
   /**
    * {@inheritDoc}
@@ -814,19 +1043,7 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    * {@inheritDoc}
    */
   public int getOutgoingRelationshipsCount(Identity sender) throws RelationshipStorageException {
-
-    try {
-
-       IdentityEntity receiverEntity = _findById(IdentityEntity.class, sender.getId());
-       return receiverEntity.getSender().getRelationships().size();
-
-     }
-     catch (NodeNotFoundException e) {
-       throw new RelationshipStorageException(
-           RelationshipStorageException.Type.FAILED_TO_GET_RELATIONSHIP,
-           e.getMessage());
-     }
-
+    return getOutgoingRelationships(sender, 0, -1).size();
   }
 
   /**
@@ -887,13 +1104,19 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    * {@inheritDoc}
    */
   public int getConnectionsCount(Identity identity) throws RelationshipStorageException {
-
     try {
-
       // TODO : use property to improve the perfs
-
       IdentityEntity identityEntity = _findById(IdentityEntity.class, identity.getId());
-      return identityEntity.getRelationship().getRelationships().size();
+      if (identityEntity.hasProperty(IdentityEntity.RELATIONSHIP_NUMBER_PARAM)) {
+        String value = identityEntity.getProperties().get(IdentityEntity.RELATIONSHIP_NUMBER_PARAM);
+        return Integer.valueOf(value);
+      } else {
+        //
+        int totalSize = identityEntity.getRelationship().getRelationships().size();
+        identityEntity.setProperty(IdentityEntity.RELATIONSHIP_NUMBER_PARAM, String.valueOf(totalSize));
+        getSession().save();
+        return totalSize;
+      }
     }
     catch (NodeNotFoundException e) {
       throw new RelationshipStorageException(RelationshipStorageException.Type.ILLEGAL_ARGUMENTS);
@@ -918,6 +1141,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   public List<Identity> getIncomingByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter, final long offset, final long limit)
       throws RelationshipStorageException {
+    //
+    if (profileFilter.isEmpty()) {
+      return StorageUtils.sortIdentitiesByFullName(getIncomingRelationships(existingIdentity, offset, limit), true);
+    }
 
     List<Identity> identities = getStorage().getIncomingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilter(identities, profileFilter, offset, limit);
@@ -931,6 +1158,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       final Identity existingIdentity, final ProfileFilter profileFilter, final long offset, final long limit)
       throws RelationshipStorageException {
 
+    if (profileFilter.isEmpty()) {
+      return StorageUtils.sortIdentitiesByFullName(getOutgoingRelationships(existingIdentity, offset, limit), true);
+    }
+    
     List<Identity> identities = getStorage().getOutgoingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilter(identities, profileFilter, offset, limit);
 
@@ -940,6 +1171,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    */
   public int getIncomingCountByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter) throws RelationshipStorageException {
+    
+    if (profileFilter.isEmpty()) {
+      return getIncomingRelationshipsCount(existingIdentity);
+    }
 
     List<Identity> identities = getStorage().getIncomingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilterCount(identities, profileFilter);
@@ -962,14 +1197,128 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    */
   public int getOutgoingCountByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter) throws RelationshipStorageException {
+    
+    if (profileFilter.isEmpty()) {
+      return getOutgoingRelationshipsCount(existingIdentity);
+    }
 
     List<Identity> identities = getStorage().getOutgoingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilterCount(identities, profileFilter);
 
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  public Map<Identity, Integer> getSuggestions(Identity currentIdentity, int maxConnections, 
+                                                int maxConnectionsToLoad, 
+                                                int maxSuggestions) throws RelationshipStorageException {
+    try {
+      return _getSuggestions(currentIdentity, maxConnections, maxConnectionsToLoad, maxSuggestions);
+    } catch (Exception e) {
+      throw new RelationshipStorageException(RelationshipStorageException.Type.FAILED_TO_GET_SUGGESTION, e);
+    }
+  }
+
+  public Map<Identity, Integer> _getSuggestions(Identity currentIdentity, int maxConnections, 
+                                                int maxConnectionsToLoad, 
+                                                int maxSuggestions) throws Exception {
+    if (maxConnectionsToLoad > 0 && maxConnections > maxConnectionsToLoad)
+       maxConnectionsToLoad = maxConnections;
+     // Get identities level 1
+    Set<Identity> relationIdLevel1 = new HashSet<Identity>();
+    RelationshipManager relationshipManager = getRelationshipManager();
+    ListAccess<Identity> allConnections = relationshipManager.getConnections(currentIdentity);
+    int size = allConnections.getSize();
+    // The ideal limit of connection to treat however we could need to go beyond this limit
+    // if we cannot reach the expected amount of suggestions
+    int endIndex;
+    Random random = new Random();
+    Identity[] connections;
+    if (size > maxConnectionsToLoad && maxConnectionsToLoad > 0 && maxConnections > 0) {
+      // The total amount of connections is bigger than the maximum allowed
+      // We will then load only a random sample to reduce the best we can the 
+      // required time for this task 
+      int startIndex = random.nextInt(size - maxConnectionsToLoad);
+      endIndex = maxConnections;
+      connections= allConnections.load(startIndex, maxConnectionsToLoad);
+    } else {
+      // The total amount of connections is less than the maximum allowed
+      // We call load everything
+      endIndex = size;
+      connections= allConnections.load(0, size);
+    }
+    // we need to load all the connections
+    for (int i = 0; i < connections.length; i++) {
+      Identity id = connections[i];
+      relationIdLevel1.add(id);
+    }
+    relationIdLevel1.remove(currentIdentity);
+
+    // Get identities level 2 (suggested Identities)
+    Map<Identity, Integer> suggestedIdentities = new HashMap<Identity, Integer>();
+    Iterator<Identity> it = relationIdLevel1.iterator();
+    for (int j = 0; j < size && it.hasNext(); j++) {
+      Identity id = it.next();
+      // We check if we reach the limit of connections to treat and if we have enough suggestions
+      if (j >= endIndex && suggestedIdentities.size() > maxSuggestions && maxSuggestions > 0)
+        break;
+      ListAccess<Identity> allConns = relationshipManager.getConnections(id);
+      int allConnSize = allConns.getSize();
+      int allConnStartIndex = 0;
+      if (allConnSize > maxConnections && maxConnections > 0) {
+        // The current identity has more connections that the allowed amount so we will treat a sample
+        allConnStartIndex = random.nextInt(allConnSize - maxConnections);
+        connections = allConns.load(allConnStartIndex, maxConnections);
+      } else {
+        // The current identity doesn't have more connections that the allowed amount so we will 
+        // treat all of them
+        connections = allConns.load(0, allConnSize);
+      }
+      for (int i = 0; i < connections.length; i++) {
+        Identity ids = connections[i];
+        // We check if the current connection is not already part of the connections of the identity
+        // for which we seek some suggestions
+        if (!relationIdLevel1.contains(ids) && !ids.equals(currentIdentity) && !ids.isDeleted()
+             && relationshipManager.get(ids, currentIdentity) == null) {
+          Integer commonIdentities = suggestedIdentities.get(ids);
+          if (commonIdentities == null) {
+            commonIdentities = new Integer(1);
+          } else {
+            commonIdentities = new Integer(commonIdentities.intValue() + 1);
+          }
+          suggestedIdentities.put(ids, commonIdentities);
+        }
+      }
+    }
+    NavigableMap<Integer, List<Identity>> groupByCommonConnections = new TreeMap<Integer, List<Identity>>();
+    // This for loop allows to group the suggestions by total amount of common connections
+    for (Identity identity : suggestedIdentities.keySet()) {
+      Integer commonIdentities = suggestedIdentities.get(identity);
+      List<Identity> ids = groupByCommonConnections.get(commonIdentities);
+      if (ids == null) {
+        ids = new ArrayList<Identity>();
+        groupByCommonConnections.put(commonIdentities, ids);
+      }
+      ids.add(identity);
+    }
+    Map<Identity, Integer> suggestions = new LinkedHashMap<Identity, Integer>();
+    int suggestionLeft = maxSuggestions;
+    // We iterate over the suggestions starting from the suggestions with the highest amount of common
+    // connections
+    main: for (Integer key : groupByCommonConnections.descendingKeySet()) {
+      List<Identity> ids = groupByCommonConnections.get(key);
+      for (Identity identity : ids) {
+        suggestions.put(identity, key);
+        // We stop once we have enough suggestions
+        if (maxSuggestions > 0 && --suggestionLeft == 0)
+          break main;
+      }
+    }
+    return suggestions;
+  }
+
   public void setStorage(RelationshipStorage storage) {
     this.relationshipStorage = storage;
   }
-
 }

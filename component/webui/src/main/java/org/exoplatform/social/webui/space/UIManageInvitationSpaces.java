@@ -19,7 +19,6 @@ package org.exoplatform.social.webui.space;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.webui.util.Util;
@@ -40,10 +39,9 @@ import org.exoplatform.webui.core.UIApplication;
 import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 @ComponentConfig(
-  template="classpath:groovy/social/webui/space/UIManageInvitationSpaces.gtmpl",
+  template="war:/groovy/social/webui/space/UIManageInvitationSpaces.gtmpl",
   events = {
     @EventConfig(listeners = UIManageInvitationSpaces.AcceptActionListener.class),
     @EventConfig(listeners = UIManageInvitationSpaces.IgnoreActionListener.class),
@@ -105,7 +103,11 @@ public class UIManageInvitationSpaces extends UIContainer {
       loadingCapacity = SPACES_PER_PAGE;
       invitedSpacesList = new ArrayList<Space>();
       setInvitedSpacesList(loadInvitedSpaces(currentLoadIndex, loadingCapacity));
-      setSelectedChar(SEARCH_ALL);
+      if (this.selectedChar != null){
+        setSelectedChar(this.selectedChar);
+      } else {
+        setSelectedChar(SEARCH_ALL);
+      }   
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
     }
@@ -182,13 +184,15 @@ public class UIManageInvitationSpaces extends UIContainer {
    * @since 1.2.2
    */
   public List<Space> getInvitedSpacesList() throws Exception {
+    this.invitedSpacesList = loadInvitedSpaces(0, this.invitedSpacesList.size());
+    int realInvitedSpacesListSize = this.invitedSpacesList.size();
+    
     if (isHasUpdatedSpace()) {
       setHasUpdatedSpace(false);
-      setInvitedSpacesList(loadInvitedSpaces(0, this.invitedSpacesList.size()));
     }
     
-    setEnableLoadNext((this.invitedSpacesList.size() >= SPACES_PER_PAGE)
-            && (this.invitedSpacesList.size() < getInvitedSpacesNum()));
+    setEnableLoadNext((realInvitedSpacesListSize >= SPACES_PER_PAGE)
+            && (realInvitedSpacesListSize < getInvitedSpacesNum()));
     
     return this.invitedSpacesList;
   }
@@ -346,11 +350,9 @@ public class UIManageInvitationSpaces extends UIContainer {
       if (charSearch == null) {
         uiManageInvitedSpaces.setSelectedChar(null);
       } else {
-        ResourceBundle resApp = ctx.getApplicationResourceBundle();
-        String defaultSpaceNameAndDesc = resApp.getString(uiManageInvitedSpaces.getId() + ".label.DefaultSpaceNameAndDesc");
-        ((UIFormStringInput) uiManageInvitedSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH)).setValue(defaultSpaceNameAndDesc);
-        uiManageInvitedSpaces.setSelectedChar(charSearch);
+        uiManageInvitedSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH).setValue("");
         uiManageInvitedSpaces.uiSpaceSearch.setSpaceNameSearch(null);
+        uiManageInvitedSpaces.setSelectedChar(charSearch);
       }
       
       uiManageInvitedSpaces.loadSearch();

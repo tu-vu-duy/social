@@ -23,10 +23,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.ResourceBundle;
 
-
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.portal.webui.util.Util;
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.Membership;
 import org.exoplatform.services.organization.MembershipHandler;
 import org.exoplatform.services.organization.OrganizationService;
@@ -68,6 +69,8 @@ import org.exoplatform.webui.form.UIFormStringInput;
   )
 })
 public class UIMembersPortlet extends UIPortletApplication {
+  private static final Log LOG = ExoLogger.getLogger(UIMembersPortlet.class);
+
   private ListAccess<Identity> memberListAccess;
   private ListAccess<Identity> managerListAccess;
   private List<Identity> memberList;
@@ -88,7 +91,7 @@ public class UIMembersPortlet extends UIPortletApplication {
   private static final String INVITATION_REVOKED_INFO = "UIMembersPortlet.label.RevokedInfo";
   private static final String INVITATION_ESTABLISHED_INFO = "UIMembersPortlet.label.InvitationEstablishedInfo";
   
-  private int currentLoadIndex;
+  private int currentLoadIndex = 0;
   private IdentityManager identityManager_ = null;
   private UIProfileUserSearch uiSearchMemberOfSpace = null;
   
@@ -210,7 +213,7 @@ public class UIMembersPortlet extends UIPortletApplication {
    * @throws Exception
    */
   public List<Identity> getMemberList() throws Exception {
-    loadSearch();
+    setMemberList(loadPeople(0, currentLoadIndex + MEMBER_PER_PAGE, Type.MEMBER));
     int realMemberListSize = memberList.size();
     setEnableLoadNext((realMemberListSize >= MEMBER_PER_PAGE) 
         && (realMemberListSize < getMemberNum()));
@@ -244,10 +247,17 @@ public class UIMembersPortlet extends UIPortletApplication {
    * @throws Exception
    */
   public void initMember() throws Exception {
-    memberProfileFilter = new ProfileFilter();
-    memberProfileFilter.getExcludedIdentityList().add(Utils.getViewerIdentity());
-    uiSearchMemberOfSpace.setProfileFilter(memberProfileFilter);
-    loadSearch();
+    try{ 
+      setLoadAtEnd(false);
+      enableLoadNext = false;
+      currentLoadIndex = 0;
+      setSelectedChar(ALL_FILTER);
+      memberProfileFilter = new ProfileFilter();
+      memberProfileFilter.getExcludedIdentityList().add(Utils.getViewerIdentity());
+      uiSearchMemberOfSpace.setProfileFilter(memberProfileFilter);
+    } catch (Exception e) {
+      LOG.error(e.getMessage(), e);
+    }
   }
 
   /**
@@ -335,6 +345,7 @@ public class UIMembersPortlet extends UIPortletApplication {
       }
       
       Utils.getRelationshipManager().inviteToConnect(invitingIdentity, invitedIdentity);
+      Utils.clearCacheOnUserPopup();
       event.getRequestContext().addUIComponentToUpdateByAjax(uiAllPeople);
     }
   }
@@ -360,6 +371,7 @@ public class UIMembersPortlet extends UIPortletApplication {
         return;
       }
       
+      Utils.clearCacheOnUserPopup();
       Utils.getRelationshipManager().confirm(invitedIdentity, invitingIdentity);
     }
   }
@@ -390,6 +402,7 @@ public class UIMembersPortlet extends UIPortletApplication {
         return;
       }
       
+      Utils.clearCacheOnUserPopup();
       Utils.getRelationshipManager().deny(inviIdentityIdentity, invitingIdentity);
     }
   }
@@ -409,9 +422,9 @@ public class UIMembersPortlet extends UIPortletApplication {
       
       ResourceBundle resApp = ctx.getApplicationResourceBundle();
 
-      String defaultNameVal = resApp.getString(uiSearch.getId() + ".label.Name");
-      String defaultPosVal = resApp.getString(uiSearch.getId() + ".label.Position");
-      String defaultSkillsVal = resApp.getString(uiSearch.getId() + ".label.Skills");
+      String defaultNameVal = resApp.getString(uiSearch.getId() + ".label.name");
+      String defaultPosVal = resApp.getString(uiSearch.getId() + ".label.position");
+      String defaultSkillsVal = resApp.getString(uiSearch.getId() + ".label.skills");
       
       ProfileFilter filter = uiSearch.getProfileFilter();
       
@@ -452,9 +465,9 @@ public class UIMembersPortlet extends UIPortletApplication {
     public void execute(Event<UIMembersPortlet> event) throws Exception {
       UIMembersPortlet uiMembersPortlet = event.getSource();
       if (uiMembersPortlet.currentLoadIndex < uiMembersPortlet.memberNum) {
-        uiMembersPortlet.loadNextMember();
+        uiMembersPortlet.increaseOffset();
       } else {
-      uiMembersPortlet.setEnableLoadNext(false);
+        uiMembersPortlet.setEnableLoadNext(false);
       }
     }
   }
@@ -490,11 +503,20 @@ public class UIMembersPortlet extends UIPortletApplication {
     }
     return identityManager_;
   }
-  
+ 
+  /**
+   * increase offset.
+   * @throws Exception
+   */
+  public void increaseOffset() throws Exception {
+    currentLoadIndex += MEMBER_PER_PAGE;
+  }
+ 
   /**
    * Load next member on UIUserSearch
    * @throws Exception
    */
+  @Deprecated
   public void loadNextMember() throws Exception {
     currentLoadIndex += MEMBER_PER_PAGE;
     if (currentLoadIndex <= getMemberNum()) {

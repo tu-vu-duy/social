@@ -85,7 +85,7 @@ public class UISpaceAddForm extends UIFormTabPane {
   static private final String MSG_ERROR_SPACE_ALREADY_EXIST = "UISpaceAddForm.msg.error_space_already_exist";
   private final String SPACE_SETTINGS = "UISpaceSettings";
   private final String SPACE_VISIBILITY = "UISpaceVisibility";
-
+  
   /**
    * Constructor: add 3 UI component to this UIFormTabPane:
    * <p/>
@@ -110,6 +110,11 @@ public class UISpaceAddForm extends UIFormTabPane {
 
     setActions(new String[]{"Create"});
     setSelectedTab(1);
+  }
+
+  @Override
+  public String getLabel(ResourceBundle res, String key) {
+    return new StringBuffer(super.getLabel(res, key)).append((key.indexOf("action.") < 0) ? ":" : "").toString();
   }
 
   /**
@@ -142,10 +147,26 @@ public class UISpaceAddForm extends UIFormTabPane {
       try {
         // Checks user is still existing or not.
         SpaceUtils.checkUserExisting(ctx.getRemoteUser());
-        if (spaceService.getSpaceByPrettyName(space.getPrettyName()) != null || 
-            spaceService.getSpaceByDisplayName(space.getDisplayName()) != null) {
+        
+        //validate the display name
+        if (spaceService.getSpaceByDisplayName(space.getDisplayName()) != null) {
           throw new SpaceException(SpaceException.Code.SPACE_ALREADY_EXIST);
         }
+        
+        //
+        Space got;
+        String prettyName = space.getPrettyName();
+        int count = 1;
+        while ((got = spaceService.getSpaceByPrettyName(prettyName)) != null) {
+          //
+          if (count == 1 && got.getDisplayName().equalsIgnoreCase(space.getDisplayName())) {
+            throw new SpaceException(SpaceException.Code.SPACE_ALREADY_EXIST);
+          }
+          prettyName = space.getPrettyName() + "_" + count;
+          //
+          ++count;
+        }
+        space.setPrettyName(prettyName);
         
         ExoContainer container = ExoContainerContext.getCurrentContainer();
         IdentityManager idm = (IdentityManager) container.getComponentInstanceOfType(IdentityManager.class);
@@ -182,10 +203,10 @@ public class UISpaceAddForm extends UIFormTabPane {
         uiApplication.addMessage(new ApplicationMessage(msg, null, ApplicationMessage.ERROR));
         return;
       }
+      SpaceUtils.endRequest();
       UIPopupWindow uiPopup = uiAddForm.getParent();
       uiPopup.setShow(false);
       Utils.updateWorkingWorkSpace();
-      SpaceUtils.endRequest();
       // TODO Re-check and re-confirm that navigation is ok then re-direct into Home of space.
       JavascriptManager jsManager = ctx.getJavascriptManager();
       jsManager.addJavascript("try { window.location.href='" + Utils.getSpaceHomeURL(space) + "' } catch(e) {" +

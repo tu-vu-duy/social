@@ -19,7 +19,6 @@ package org.exoplatform.social.webui.space;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.webui.util.Util;
@@ -36,10 +35,9 @@ import org.exoplatform.webui.core.UIApplication;
 import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/space/UIManagePendingSpaces.gtmpl",
+  template = "war:/groovy/social/webui/space/UIManagePendingSpaces.gtmpl",
   events = {
       @EventConfig(listeners = UIManagePendingSpaces.RevokePendingActionListener.class),
       @EventConfig(listeners = UIManagePendingSpaces.SearchActionListener.class),
@@ -99,7 +97,11 @@ public class UIManagePendingSpaces extends UIContainer {
       loadingCapacity = SPACES_PER_PAGE;
       pendingSpacesList = new ArrayList<Space>();
       setPendingSpacesList(loadPendingSpaces(currentLoadIndex, loadingCapacity));
-      setSelectedChar(SEARCH_ALL);
+      if (this.selectedChar != null){
+        setSelectedChar(this.selectedChar);
+      } else {
+        setSelectedChar(SEARCH_ALL);
+      }   
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
     }
@@ -176,13 +178,15 @@ public class UIManagePendingSpaces extends UIContainer {
    * @since 1.2.2
    */
   public List<Space> getPendingSpacesList() throws Exception {
-    if (isHasUpdatedSpace()) {
-      setHasUpdatedSpace(false);
-      setPendingSpacesList(loadPendingSpaces(0, this.pendingSpacesList.size()));
-    }
+    this.pendingSpacesList = loadPendingSpaces(0, this.pendingSpacesList.size());
+    int realPendingSpacesListSize = this.pendingSpacesList.size();
     
-    setEnableLoadNext((this.pendingSpacesList.size() >= SPACES_PER_PAGE)
-            && (this.pendingSpacesList.size() < getPendingSpacesNum()));
+    if (isHasUpdatedSpace()) {
+      setHasUpdatedSpace(false); 
+    }
+        
+    setEnableLoadNext((realPendingSpacesListSize >= SPACES_PER_PAGE)
+            && (realPendingSpacesListSize < getPendingSpacesNum()));
     
     return this.pendingSpacesList;
   }
@@ -340,11 +344,9 @@ public class UIManagePendingSpaces extends UIContainer {
       if (charSearch == null) {
         uiManagePendingSpaces.setSelectedChar(null);
       } else {
-        ResourceBundle resApp = ctx.getApplicationResourceBundle();
-        String defaultSpaceNameAndDesc = resApp.getString(uiManagePendingSpaces.getId() + ".label.DefaultSpaceNameAndDesc");
-        ((UIFormStringInput) uiManagePendingSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH)).setValue(defaultSpaceNameAndDesc);
-        uiManagePendingSpaces.setSelectedChar(charSearch);
+        uiManagePendingSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH).setValue("");
         uiManagePendingSpaces.uiSpaceSearch.setSpaceNameSearch(null);
+        uiManagePendingSpaces.setSelectedChar(charSearch);
       }
       
       uiManagePendingSpaces.loadSearch();

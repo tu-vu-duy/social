@@ -17,12 +17,15 @@
 
 package org.exoplatform.social.core.storage.api;
 
+import java.util.List;
+import java.util.Map;
+
+import javax.jcr.RepositoryException;
+
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.storage.RelationshipStorageException;
-
-import java.util.List;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
@@ -107,6 +110,18 @@ public interface RelationshipStorage {
    */
   public Relationship getRelationship(final Identity identity1, final Identity identity2)
       throws RelationshipStorageException;
+  
+  /**
+   * Has relationship by relationship path
+   *
+   * @param identity1 the identity1
+   * @param identity2 the identity2
+   * @param relationshipPath the relationship path
+   * @return TRUE/FALSE
+   * @throws RelationshipStorageException
+   */
+  public boolean hasRelationship(final Identity identity1, final Identity identity2, final String relationshipPath)
+      throws RepositoryException;
 
   /**
    * Gets the list of relationship by identity matching with checking
@@ -307,4 +322,34 @@ public interface RelationshipStorage {
    */
   public int getOutgoingCountByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter) throws RelationshipStorageException;
+  
+  /**
+   * Gets suggestions having common users with the provided identity. If the total amount of suggestions
+   * found doesn't match with the expected amount this method could return null even if some suggestions
+   * have been found, this is needed to be able to distinguish cases where we could not found enough
+   * suggestions because we did not treat all the sub connections from cases where on a given sample
+   * of sub connections we could not find what we expect
+   * @param identity The provided identity.
+   * @param maxConnections Maximum of connections that we can treat per identity. If set
+   * to a value <= 0, the limit will be disabled
+   * @param maxConnectionsToLoad In case, the maxConnections are not enough to find enough suggestion, 
+   * we load more connections at the first level. If maxConnectionsToLoad or maxConnections has been 
+   * set to a value <= 0, the limit will be disabled
+   * @param maxSuggestions The total amount of expected suggestions. If set to a value <= 0, the limit 
+   * will be disabled
+   * @since 4.0.x
+   */
+  public Map<Identity, Integer> getSuggestions(Identity identity, int maxConnections, 
+                                               int maxConnectionsToLoad, 
+                                               int maxSuggestions) throws RelationshipStorageException;
+  
+  /**
+   * Get the list of identities who are most recently connected with given user
+   * the limit number of results must be greater than 0 or an empty list will be returned   
+   * 
+   * @param identity
+   * @param limit 
+   * @return
+   */
+  public List<Identity> getLastConnections(Identity identity, int limit) throws RelationshipStorageException;
 }

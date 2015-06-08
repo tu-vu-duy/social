@@ -29,12 +29,17 @@ public abstract class ProfileListenerPlugin extends AbstractListenerPlugin imple
   /**
    * {@inheritDoc}
    */
+  public void aboutMeUpdated(ProfileLifeCycleEvent event) {}
+  
+  /**
+   * {@inheritDoc}
+   */
   public abstract void avatarUpdated(ProfileLifeCycleEvent event);
 
   /**
    * {@inheritDoc}
    */
-  public abstract void basicInfoUpdated(ProfileLifeCycleEvent event);
+  public void basicInfoUpdated(ProfileLifeCycleEvent event) {}
 
   /**
    * {@inheritDoc}
@@ -49,6 +54,11 @@ public abstract class ProfileListenerPlugin extends AbstractListenerPlugin imple
   /**
    * {@inheritDoc}
    */
-  public abstract void headerSectionUpdated(ProfileLifeCycleEvent event);
+  public void headerSectionUpdated(ProfileLifeCycleEvent event) {}
+  
+  /**
+   * {@inheritDoc}
+   */
+  public abstract void createProfile(ProfileLifeCycleEvent event);
 
 }

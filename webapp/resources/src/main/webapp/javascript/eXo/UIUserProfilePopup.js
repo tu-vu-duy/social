@@ -216,6 +216,7 @@
                    } else {
 		                 $.ajax({
 		                     type: "GET",
+		                     cache: false,
 		                     url: restUrl
 		                 }).complete(function (jqXHR) {
 		                     if (jqXHR.readyState === 4) {
@@ -266,10 +267,11 @@
 							        var currentViewerId = portal.userName;
 							        var action = null;
 							        var labels = opts.labels;
+							        var isDeleted = json.deleted;
 							        
 							        tiptip_content.empty();
 							        
-							        if (currentViewerId != ownerUserId) {
+							        if (currentViewerId != ownerUserId && !isDeleted) {
 							    
 							            action = $('<div/>', {
 							                "class": "connect btn btn-primary",
@@ -290,162 +292,178 @@
 							                action = $('<div/>', {
 							                    "class": "connect btn",
 							                    "text": "" + labels.CancelRequest,
-							                    "data-action": "Revoke:" + ownerUserId,
-							                    "onclick": "takeAction(this)"
+                                                "data-action":"Revoke:" + ownerUserId,
+                                                "onclick":"takeAction(this)"
 							                });
 							            } else if (relationStatus == "confirmed") { // Had Connection 
 							                action = $('<div/>', {
-							                    "class": "connect btn",
-							                    "text": "" + labels.RemoveConnection,
-							                    "data-action": "Disconnect:" + ownerUserId,
-							                    "onclick": "takeAction(this)"
-							                });
+				                                "class":"connect btn",
+				                                "text":"" + labels.RemoveConnection,
+				                                "data-action":"Disconnect:" + ownerUserId,
+				                                "onclick":"takeAction(this)"
+			                                });
 							            } else if (relationStatus == "ignored") { // Connection is removed
 							                action = $('<div/>', {
-							                    "class": "connect btn",
-							                    "text": "" + labels.Ignore,
-							                    "data-action": "Deny:" + ownerUserId,
-							                    "onclick": "takeAction(this)"
-							                });
-							            }
-							    
-							            //actionContainer = $("<div/>").append(action);
-							    
-							        }
-							    
-							        //
-							        var popupContentContainer = $("<div/>");
-							        var popupContent = $("<table/>", {
-							          "id" : "tipName"
-							        });
-							        var tbody = $("<tbody/>");
-							        var tr = $("<tr/>");
-							        var tdAvatar = $("<td/>", {
-							           "width": "50px"
-							        });
-							        var img = $("<img/>",{
-							           "src" : json.avatarURL
-							        });
-							        
-                      tdAvatar.append(img);
-                      
-							        var tdProfile = $("<td/>");
-							        var aProfile = $("<a/>", {
-                         "target" : "_parent",
-                         "href" : json.profileUrl,
-                         "text" : json.fullName
-                      });
+				                                "class":"connect btn",
+				                                "text":"" + labels.Ignore,
+				                                "data-action":"Deny:" + ownerUserId,
+				                                "onclick":"takeAction(this)"
+                                            });
+                        }
 
-                      tdProfile.append(aProfile);
-
-                      if (json.position) {
-								        var divPosition = $("<div/>", {
-								           "font-weight" : "normal",
-								           "text" : json.position
-								        });
-								        tdProfile.append(divPosition);
-							        }
-                      
-                      tr.append(tdAvatar).append(tdProfile);
-                      
-                      tbody.append(tr);
-                      
-                      popupContent.append(tbody);
-                      
-							        if (json.activityTitle) {
-								        var blockquote = $("<blockquote/>", {
-								           "text" : stripString(json.activityTitle)
-								        });
-							        }
-							        
-							        popupContentContainer.append(popupContent);
-							        
-							        if (blockquote) {
-							          popupContentContainer.append(blockquote);
-							        }
-							        
-							        if (currentViewerId != ownerUserId) {
-							            var divUIAction = $("<div/>",{
-							              "class" : "uiAction connectAction"
-							            }).append(action);
-							        }
-							        
-							        if (divUIAction) {
-							          popupContentContainer.append(divUIAction);
-							        }
-							        
-							        tiptip_content.html(popupContentContainer.html());
-							    }
-							    
-							    function stripString(activityTitle) {
-							      var MAX_CHAR = 100;
-							      var DOT_DOT_DOT = "...";
-
-							      if ( activityTitle.match(/<(\w+)((?:\s+\w+(?:\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)>/) ) {
-                      activityTitle=activityTitle.replace(/<br>/gi, "\n");
-                      activityTitle=activityTitle.replace(/<p.*>/gi, "\n");
-                      activityTitle=activityTitle.replace(/<a.*href="(.*?)".*>(.*?)<\/a>/gi, " $2 ");
-                      activityTitle=activityTitle.replace(/<(?:.|\s)*?>/g, "");
                     }
 
-							      //
-							      if (activityTitle.length < MAX_CHAR) {
-							        return activityTitle;
-							      }
-							      
-							      //
-							      return activityTitle.substring(0, MAX_CHAR) + DOT_DOT_DOT;
-							    };
-							    
-							    function takeAction(el) {
-							        var dataAction = $(el).attr('data-action');
-							        var updatedType = dataAction.split(":")[0];
-							        var ownerUserId = dataAction.split(":")[1];
-							    
-							        $.ajax({
-							            type: "GET",
-							            url: opts.restURL.replace('{0}', ownerUserId) + '?updatedType=' + updatedType
-							        }).complete(function (jqXHR) {
-							            if (jqXHR.readyState === 4) {
-							                var popup = $(el).closest('#tiptip_holder');
-							                popup.fadeOut('fast', function () {
-							                });
-							                
-							                // clear cache
-							                clearCache();
-							            }
-							        });
-							    }
-                  
-							    function putToCache(key, data) {
-							        var ojCache = $('div#socialUsersData');
-							        if (ojCache.length == 0) {
-							            ojCache = $('<div id="socialUsersData"></div>').appendTo($(document.body));
-							            ojCache.hide();
-							        }
-							        key = 'result' + ((key === ' ') ? '_20' : key);
-							        var datas = ojCache.data("CacheSearch");
-							        if (String(datas) === "undefined") datas = {};
-							        datas[key] = data;
-							        ojCache.data("CacheSearch", datas);
-							    }
-							    
-							    function getCache(key) {
-							        key = 'result' + ((key === ' ') ? '_20' : key);
-							        var datas = $('div#socialUsersData').data("CacheSearch");
-							        return (String(datas) === "undefined") ? null : datas[key];
-							    }
-							    
-							    function clearCache() {
-							        $('div#socialUsersData').stop().animate({
-							            'cursor': 'none'
-							        }, 1000, function () {
-							            $(this).data("CacheSearch", {});
-							        });
-							    }
-							    
-                  window.takeAction = takeAction;
-             }
-         })
-     }
- })(jQuery);
+                    var popupContentContainer = $("<div/>");
+                    var popupContent = $("<table/>", {
+                        "id":"tipName"
+                    });
+                    var tbody = $("<tbody/>");
+                    var tr = $("<tr/>");
+                    var tdAvatar = $("<td/>", {
+                        "width":"50px"
+                    });
+                    var img = $("<img/>", {
+                        "src":json.avatarURL
+                    });
+
+                    var aAvatar = $("<a/>", {
+                        "target":"_self",
+                        "href":json.profileUrl
+                    });
+
+                    tdAvatar.append(aAvatar.append(img));
+
+                    var tdProfile = $("<td/>");
+                    var aProfile = $("<a/>", {
+                        "target":"_self",
+                        "href":json.profileUrl,
+                        "text":json.fullName
+                    });
+
+                    tdProfile.append(aProfile);
+
+                    if (json.position) {
+                        var divPosition = $("<div/>", {
+                            "font-weight":"normal",
+                            "text":json.position
+                        });
+                        tdProfile.append(divPosition);
+                    }
+
+                    tr.append(tdAvatar).append(tdProfile);
+
+                    tbody.append(tr);
+
+                    popupContent.append(tbody);
+
+                    if (json.activityTitle) {
+                        var blockquote = $("<blockquote/>", {
+                          "text" :json.activityTitle.replace(/<[^>]+>/g, '')
+                        });
+                    }
+
+                    popupContentContainer.append(popupContent);
+
+                    if (blockquote) {
+                        popupContentContainer.append(blockquote);
+                    }
+
+                    if (currentViewerId != ownerUserId && !isDeleted) {
+                        var divUIAction = $("<div/>", {
+                            "class":"uiAction connectAction"
+                        }).append(action);
+                    }
+
+                    if (divUIAction) {
+                        popupContentContainer.append(divUIAction);
+                    }
+
+                    tiptip_content.html(popupContentContainer.html());
+                }
+
+                function takeAction(el) {
+                    var userList = org_elem.parents('div.userList:first');
+
+                    var thisTip = $(el).parents('div#tiptip_content:first');
+                    var tipName = thisTip.find('table#tipName:first');
+                    var userURL = tipName.find('a:first').attr('href').replace('activities', 'profile'); 
+
+                    var focusedUserLink = userList.find('a[href$="' + userURL + '"]:first');
+                    var focusedUserBlock = focusedUserLink.parents('div.spaceBox:first');
+                    
+                    if (focusedUserBlock.length > 0) {
+                      var actionBtn = $(focusedUserBlock).find('div.connectionBtn');
+                      
+                      // invoke onclick()
+                      var btn = actionBtn.find('button.btn-confirm:first');
+                      if(btn.length === 0) {
+                        actionBtn.find('button.btn:first').trigger('click');
+                      } else {
+                        btn.trigger('click');
+                      }
+                      
+                      // clear cache and hide popup
+                      var popup = $(el).closest('#tiptip_holder');
+                      popup.fadeOut('fast');
+                      // clear cache
+                      clearCache();
+                      return;
+                    }
+
+                    var dataAction = $(el).attr('data-action');
+                    var updatedType = dataAction.split(":")[0];
+                    var ownerUserId = dataAction.split(":")[1];
+
+                    $.ajax({
+                        type:"GET",
+                        cache: false,
+                        url:opts.restURL.replace('{0}', ownerUserId) + '?updatedType=' + updatedType
+                    }).complete(function (jqXHR) {
+                                if (jqXHR.readyState === 4) {
+                                    var popup = $(el).closest('#tiptip_holder');
+                                    popup.fadeOut('fast', function () {
+                                    });
+
+                                    if(updatedType === "Disconnect" && $(org_elem).data('link')) {
+                                      var actionLink = $(org_elem).data('link').replace('javascript:', '');
+                                      $.globalEval(actionLink);
+                                    }
+                                    
+                                    // clear cache
+                                    clearCache();
+                                }
+                            });
+                }
+
+                function putToCache(key, data) {
+                    var ojCache = $('div#socialUsersData');
+                    if (ojCache.length == 0) {
+                        ojCache = $('<div id="socialUsersData"></div>').appendTo($(document.body));
+                        ojCache.hide();
+                    }
+                    key = 'result' + ((key === ' ') ? '_20' : key);
+                    var datas = ojCache.data("CacheSearch");
+                    if (String(datas) === "undefined") datas = {};
+                    datas[key] = data;
+                    ojCache.data("CacheSearch", datas);
+                }
+
+                function getCache(key) {
+                    key = 'result' + ((key === ' ') ? '_20' : key);
+                    var datas = $('div#socialUsersData').data("CacheSearch");
+                    return (String(datas) === "undefined") ? null : datas[key];
+                }
+
+                function clearCache() {
+                    $('div#socialUsersData').stop().animate({
+                        'cursor':'none'
+                    }, 1000, function () {
+                        $(this).data("CacheSearch", {});
+                    });
+                }
+
+                window.takeAction = takeAction;
+            }
+        })
+    }
+})(jQuery);

@@ -25,10 +25,15 @@ import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.social.core.activity.ActivitiesRealtimeListAccess;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
+import org.exoplatform.social.core.identity.model.Identity;
+import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
+import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.webui.Utils;
 import org.exoplatform.social.webui.composer.UIComposer;
+import org.exoplatform.social.webui.composer.UIComposer.PostContext;
 import org.exoplatform.social.webui.profile.UIUserActivitiesDisplay;
 import org.exoplatform.web.application.RequireJS;
 import org.exoplatform.webui.application.WebuiRequestContext;
@@ -39,7 +44,7 @@ import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
 
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/activity/UIActivitiesLoader.gtmpl",
+  template = "war:/groovy/social/webui/activity/UIActivitiesLoader.gtmpl",
   events = {
     @EventConfig(listeners = UIActivitiesLoader.LoadMoreActionListener.class)
   }
@@ -65,8 +70,8 @@ public class UIActivitiesLoader extends UIContainer {
   private UIActivitiesContainer activitiesContainer;
   private UIContainer extendContainer;
   private int loadingCapacity;
+  private int pageSize;
   private Space space;
-  private int activitiesCounter;
   
   public UIActivitiesLoader() {
     try {
@@ -114,6 +119,7 @@ public class UIActivitiesLoader extends UIContainer {
   }
 
   public void setLoadingCapacity(int loadingCapacity) {
+    this.pageSize = loadingCapacity;
     this.loadingCapacity = loadingCapacity;
   }
 
@@ -153,8 +159,12 @@ public class UIActivitiesLoader extends UIContainer {
     try {
       hasMore = false;
       currentLoadIndex = 0;
-      activitiesCounter = 0;
       isExtendLoader = false;
+      
+      String activityId = getSingleActivityId();
+      if (activityId != null && activityId.length() > 0) {
+        postContext = PostContext.SINGLE;
+      }
       
       activitiesContainer.setPostContext(postContext);
       activitiesContainer.setOwnerName(ownerName);
@@ -166,7 +176,11 @@ public class UIActivitiesLoader extends UIContainer {
       List<ExoSocialActivity> activities = new ArrayList<ExoSocialActivity>(0);
       
       if (isShowActivities(space)) {
-        activities = loadActivities(currentLoadIndex, loadingCapacity);
+        if (this.postContext == PostContext.SINGLE) {
+          activities = loadActivity();
+        } else {
+          activities = loadActivities(currentLoadIndex, loadingCapacity);
+        }
       }
       
       activitiesContainer.setActivityList(activities);
@@ -174,8 +188,22 @@ public class UIActivitiesLoader extends UIContainer {
       LOG.error(e.getMessage(), e);
     }
   }
+  
+  private String getSingleActivityId() {
+    if ("activity".equals(Utils.getSelectedNode())) {
+      if (Utils.getValueFromRequestParam("id") != null) {
+        return Utils.getValueFromRequestParam("id");
+      }
+      return Utils.getValueFromRefererURI("id");
+    }
+    return null;
+  }
 
   private void loadNext() throws Exception {
+    if (activityListAccess != null && activityListAccess instanceof ActivitiesRealtimeListAccess) {
+      ActivitiesRealtimeListAccess listAccess = (ActivitiesRealtimeListAccess) activityListAccess;
+      listAccess.getNumberOfUpgrade();
+    }
     currentLoadIndex += loadingCapacity;
     List<ExoSocialActivity> activities = new ArrayList<ExoSocialActivity>(0);
     lastActivitiesLoader = extendContainer.addChild(UIActivitiesLoader.class, null, UIActivitiesLoader.genereateId());
@@ -190,9 +218,7 @@ public class UIActivitiesLoader extends UIContainer {
     lastActivitiesContainer.setSpace(space);
     
     lastActivitiesLoader.setActivities(activities);
-    if(activityListAccess != null) {
-      lastActivitiesLoader.setHasMore(activityListAccess.getSize() > activitiesCounter);
-    }
+    lastActivitiesLoader.setHasMore(isHasMore());
   }
 
   private void setActivities(List<ExoSocialActivity> activities) throws Exception {
@@ -201,24 +227,48 @@ public class UIActivitiesLoader extends UIContainer {
 
   private List<ExoSocialActivity> loadActivities(int index, int length) throws Exception {
     if (activityListAccess != null) {
-      ExoSocialActivity[] activities = activityListAccess.load(index, length);
+      int newLength = length + 1;
+      ExoSocialActivity[] activities = activityListAccess.load(index, newLength);
       if (activities != null) {
-        activitiesCounter += activities.length;
-        setHasMore(activityListAccess.getSize() > activitiesCounter);
-
-        return new ArrayList<ExoSocialActivity>(Arrays.asList(activities));
+        int size = activities.length;
+        boolean hasMore = size > length;
+        setHasMore(hasMore);
+        
+        return hasMore ? new ArrayList<ExoSocialActivity>(Arrays.asList(activities)).subList(0, length) : new ArrayList<ExoSocialActivity>(Arrays.asList(activities)) ;
       }
     }
     return null;
   }
   
+  private List<ExoSocialActivity> loadActivity() throws Exception {
+    ActivityManager activityManager = Utils.getActivityManager();
+    String activityId = getSingleActivityId();
+    ExoSocialActivity activity = (activityId != null) ? activityManager.getActivity(activityId) : null;
+    if (activity == null)
+      return null;
+    return new ArrayList<ExoSocialActivity>(Arrays.asList(activity));
+  }
+  
   private boolean isShowActivities(Space space) {
-    if (space == null) return true;
+    if (space == null) {
+      space = getSpaceByActivityId(Utils.getActivityID());
+      if (space == null)
+        return true;
+    }
     
     String remoteId = Util.getPortalRequestContext().getRemoteUser();
     return Utils.getSpaceService().isMember(space, remoteId);
   }
 
+  private Space getSpaceByActivityId(String activityId) {
+    try {
+      ExoSocialActivity activity = Utils.getActivityManager().getActivity(activityId);
+      Identity spaceIdentity = Utils.getIdentityManager().getOrCreateIdentity(SpaceIdentityProvider.NAME, activity.getStreamOwner(), true);
+      return Utils.getSpaceService().getSpaceByPrettyName(spaceIdentity.getRemoteId());
+    } catch (Exception e) {
+      return null;
+    }
+  }
 
   public static class LoadMoreActionListener extends EventListener<UIActivitiesLoader> {
     @Override

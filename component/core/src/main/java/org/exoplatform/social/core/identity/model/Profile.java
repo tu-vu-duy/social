@@ -21,8 +21,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.exoplatform.social.core.chromattic.entity.ActivityProfileEntity;
 import org.exoplatform.social.core.model.AvatarAttachment;
+import org.exoplatform.social.core.profile.ProfileLifeCycle;
 
 /**
  * The Class Profile.
@@ -31,6 +33,8 @@ public class Profile {
 
   /** gender key. */
   public static final String        GENDER         = "gender";
+  public static final String        MALE           = "male";
+  public static final String        FEMALE         = "female";
 
   /** username key. */
   public static final String        USERNAME       = "username";
@@ -46,6 +50,9 @@ public class Profile {
   
   /** email key. */
   public static final String        EMAIL          = "email";
+
+  /** email key. */
+  public static final String        ABOUT_ME       = "aboutMe";
 
   /** profile of a deleted user */
   public static final String        DELETED        = "deleted";
@@ -109,6 +116,9 @@ public class Profile {
   /** Resized subfix */
   public static final String        RESIZED_SUBFIX = "RESIZED_";
 
+  /** Space string */
+  private static final String       SPACE_STR = " ";
+  
   /** Types of updating of profile. */
   public static enum                UpdateType 
                                       {
@@ -116,7 +126,31 @@ public class Profile {
                                         BASIC_INFOR,
                                         CONTACT,
                                         EXPERIENCES,
-                                        AVATAR
+                                        AVATAR,
+                                        ABOUT_ME;
+                                        
+                                        public void updateActivity(ProfileLifeCycle profileLifeCycle, Profile profile) {
+                                          switch (this) {
+                                            case ABOUT_ME: {
+                                              profileLifeCycle.aboutMeUpdated(profile.getIdentity().remoteId, profile);
+                                              break;
+                                            }
+                                            case CONTACT: {
+                                              profileLifeCycle.contactUpdated(profile.getIdentity().getRemoteId(), profile);
+                                              break;
+                                            }
+                                            case EXPERIENCES: {
+                                              profileLifeCycle.experienceUpdated(profile.getIdentity().getRemoteId(), profile);
+                                              break;
+                                            }
+                                            case AVATAR: {
+                                              profileLifeCycle.avatarUpdated(profile.getIdentity().getRemoteId(), profile);
+                                              break;
+                                            }
+                                            default :
+                                              break;
+                                          }
+                                        }
                                       };
                                       
   public static enum                AttachedActivityType
@@ -214,6 +248,8 @@ public class Profile {
   
   /** Profile created time **/
   private long                      createdTime;
+  
+  private List<UpdateType> listUpdateTypes;
 
   /**
    * Instantiates a new profile.
@@ -423,14 +459,18 @@ public class Profile {
    * @return the full name
    */
   public final String getFullName() {
-    String first = (String) getProperty(FIRST_NAME);
-    String last = (String) getProperty(LAST_NAME);
-    String fullName = getProperty(FULL_NAME) != null ? (String) getProperty(FULL_NAME) : "";
-    String all = (first != null) ? first : "";
-    all += (last != null) ? " " + last : "";
-    return all.length() > 0 ? all : fullName;
+    String fullName = (String) getProperty(FULL_NAME);
+    if (fullName != null && fullName.length() > 0) {
+      return fullName;
+    }
+    
+    String firstName = (String) getProperty(FIRST_NAME);
+    String lastName = (String) getProperty(LAST_NAME);
+    fullName = (firstName != null) ? firstName : StringUtils.EMPTY;
+    fullName += (lastName != null) ? SPACE_STR + lastName : StringUtils.EMPTY;
+    return fullName;
   }
-
+  
   /**
    * Get this profile URL
    * 
@@ -555,5 +595,13 @@ public class Profile {
   @Override
   public final String toString() {
     return "[uuid : " + id + " identity : " + identity.getId() + " properties: " + properties;
+  }
+
+  public List<UpdateType> getListUpdateTypes() {
+    return listUpdateTypes;
+  }
+
+  public void setListUpdateTypes(List<UpdateType> listUpdateTypes) {
+    this.listUpdateTypes = listUpdateTypes;
   }
 }

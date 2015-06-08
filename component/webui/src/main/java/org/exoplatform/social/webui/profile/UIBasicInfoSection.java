@@ -16,11 +16,15 @@
  */
 package org.exoplatform.social.webui.profile;
 
-import java.util.List;
-
+import org.exoplatform.container.component.ComponentRequestLifecycle;
+import org.exoplatform.container.component.RequestLifeCycle;
+import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.organization.User;
+import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.webui.Utils;
+import org.exoplatform.web.CacheUserProfileFilter;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
@@ -29,10 +33,13 @@ import org.exoplatform.webui.core.lifecycle.UIFormLifecycle;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.Event.Phase;
 import org.exoplatform.webui.form.UIFormStringInput;
+import org.exoplatform.webui.form.UIFormTextAreaInput;
 import org.exoplatform.webui.form.validator.EmailAddressValidator;
 import org.exoplatform.webui.form.validator.MandatoryValidator;
 import org.exoplatform.webui.form.validator.PersonalNameValidator;
 import org.exoplatform.webui.form.validator.StringLengthValidator;
+
+import java.util.List;
 
 /**
  * Component manages basic information. This is one part of profile management
@@ -42,10 +49,10 @@ import org.exoplatform.webui.form.validator.StringLengthValidator;
 
 @ComponentConfig(
   lifecycle = UIFormLifecycle.class,
-  template = "classpath:groovy/social/webui/profile/UIBasicInfoSection.gtmpl",
+  template = "war:/groovy/social/webui/profile/UIBasicInfoSection.gtmpl",
   events = {
     @EventConfig(listeners = UIBasicInfoSection.EditActionListener.class, phase = Phase.DECODE),
-    @EventConfig(listeners = UIBasicInfoSection.SaveActionListener.class),
+    @EventConfig(listeners = UIBasicInfoSection.SaveActionListener.class, csrfCheck = true),
     @EventConfig(listeners = UIBasicInfoSection.CancelActionListener.class, phase = Phase.DECODE)
   }
 )
@@ -75,6 +82,9 @@ public class UIBasicInfoSection extends UIProfileSection {
     addUIFormInput(new UIFormStringInput(Profile.EMAIL, Profile.EMAIL, null).
                    addValidator(MandatoryValidator.class).
                    addValidator(EmailAddressValidator.class));
+    
+    addUIFormInput(new UIFormTextAreaInput(Profile.ABOUT_ME, Profile.ABOUT_ME, null).
+                   addValidator(MandatoryValidator.class));
   }
 
   /**
@@ -88,6 +98,7 @@ public class UIBasicInfoSection extends UIProfileSection {
       this.getUIStringInput(Profile.FIRST_NAME).setValue((String) profile.getProperty(Profile.FIRST_NAME));
       this.getUIStringInput(Profile.LAST_NAME).setValue((String) profile.getProperty(Profile.LAST_NAME));
       this.getUIStringInput(Profile.EMAIL).setValue((String) profile.getProperty(Profile.EMAIL));
+      this.getUIFormTextAreaInput(Profile.ABOUT_ME).setValue((String) profile.getProperty(Profile.ABOUT_ME));
       if (isEditMode())
         setFirstLoad(true);
     }
@@ -134,6 +145,7 @@ public class UIBasicInfoSection extends UIProfileSection {
       String firstName = uiForm.getUIStringInput(Profile.FIRST_NAME).getValue();
       String lastName = uiForm.getUIStringInput(Profile.LAST_NAME).getValue();
       String newEmail = uiForm.getUIStringInput(Profile.EMAIL).getValue();
+      String aboutme = uiForm.getUIFormTextAreaInput(Profile.ABOUT_ME).getValue();
       String fullName = firstName + " " + lastName;
       
       Identity viewerIdentity = Utils.getViewerIdentity(true);
@@ -153,10 +165,23 @@ public class UIBasicInfoSection extends UIProfileSection {
         profile.setProperty(Profile.EMAIL, newEmail);
         profileHasUpdated = true;
       }
+      if (!(aboutme).equals(profile.getProperty(Profile.ABOUT_ME))) {
+        profile.setProperty(Profile.ABOUT_ME, aboutme);
+        profileHasUpdated = true;
+      }
       if (profileHasUpdated) {
         Utils.getIdentityManager().updateProfile(profile);
         //updates profile
         Utils.getOwnerIdentity(true);
+        ConversationState state = ConversationState.getCurrent();
+        OrganizationService organizationService = uiForm.getApplicationComponent(OrganizationService.class);
+        try {
+          RequestLifeCycle.begin((ComponentRequestLifecycle) organizationService);
+          User user = organizationService.getUserHandler().findUserByName(state.getIdentity().getUserId());
+          state.setAttribute(CacheUserProfileFilter.USER_PROFILE, user);
+        } finally {
+          RequestLifeCycle.end();
+        }
       }
       
       uiForm.setFirstLoad(false);

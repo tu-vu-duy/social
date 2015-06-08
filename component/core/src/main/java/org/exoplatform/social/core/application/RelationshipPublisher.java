@@ -35,6 +35,7 @@ import org.exoplatform.social.core.processor.I18NActivityUtils;
 import org.exoplatform.social.core.relationship.RelationshipEvent;
 import org.exoplatform.social.core.relationship.RelationshipListenerPlugin;
 import org.exoplatform.social.core.relationship.model.Relationship;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 
 /**
@@ -128,6 +129,7 @@ public class RelationshipPublisher extends RelationshipListenerPlugin {
         ExoSocialActivity newActivitySender = createNewActivity(sender, nbOfSenderConnections);
         activityManager.saveActivityNoReturn(sender, newActivitySender);
         getIdentityStorage().updateProfileActivityId(sender, newActivitySender.getId(), Profile.AttachedActivityType.RELATIONSHIP);
+        SpaceUtils.endRequest();
         activityManager.saveComment(newActivitySender, senderComment);
       }
       
@@ -145,6 +147,7 @@ public class RelationshipPublisher extends RelationshipListenerPlugin {
         ExoSocialActivity newActivityReceiver = createNewActivity(receiver, nbOfReceiverConnections);
         activityManager.saveActivityNoReturn(receiver, newActivityReceiver);
         getIdentityStorage().updateProfileActivityId(receiver, newActivityReceiver.getId(), Profile.AttachedActivityType.RELATIONSHIP);
+        SpaceUtils.endRequest();
         activityManager.saveComment(newActivityReceiver, receiverComment);
       }
     } catch (Exception e) {
@@ -205,29 +208,29 @@ public class RelationshipPublisher extends RelationshipListenerPlugin {
    * Publish an activity on invited member to show the invitation to connect
    */
   public void requested(RelationshipEvent event) {
-    Relationship relationship = event.getPayload();
-    try {
-      Map<String,String> params = this.getParams(relationship);
-      ExoSocialActivity activity1 = new ExoSocialActivityImpl(relationship.getSender().getId(), 
-                                                              RELATIONSHIP_ACTIVITY_TYPE,
-                                                              relationship.getSender().getProfile().getFullName() + " has invited " 
-                                                              + relationship.getReceiver().getProfile().getFullName() + " to connect", null);
-      activity1.setTitleId(TitleId.CONNECTION_REQUESTED.toString());
-      activity1.setTemplateParams(params);
-      activityManager.saveActivityNoReturn(relationship.getSender(), activity1);
-
-      //TODO hoatle a quick fix for activities gadget to allow deleting this activity
-      ExoSocialActivity activity2 = new ExoSocialActivityImpl(relationship.getReceiver().getId(), 
-                                                              RELATIONSHIP_ACTIVITY_TYPE,
-                                                              relationship.getSender().getProfile().getFullName() + " has invited "
-                                                              + relationship.getReceiver().getProfile().getFullName() + " to connect", null);
-      activity2.setTitleId(TitleId.CONNECTION_REQUESTED.toString());
-      activity2.setTemplateParams(params);
-      activityManager.saveActivityNoReturn(relationship.getReceiver(), activity2);
-
-    } catch (Exception e) {
-      LOG.warn("Failed to publish event " + event + ": " + e.getMessage());
-    }
+//    Relationship relationship = event.getPayload();
+//    try {
+//      Map<String,String> params = this.getParams(relationship);
+//      ExoSocialActivity activity1 = new ExoSocialActivityImpl(relationship.getSender().getId(), 
+//                                                              RELATIONSHIP_ACTIVITY_TYPE,
+//                                                              relationship.getSender().getProfile().getFullName() + " has invited " 
+//                                                              + relationship.getReceiver().getProfile().getFullName() + " to connect", null);
+//      activity1.setTitleId(TitleId.CONNECTION_REQUESTED.toString());
+//      activity1.setTemplateParams(params);
+//      activityManager.saveActivityNoReturn(relationship.getSender(), activity1);
+//
+//      //TODO hoatle a quick fix for activities gadget to allow deleting this activity
+//      ExoSocialActivity activity2 = new ExoSocialActivityImpl(relationship.getReceiver().getId(), 
+//                                                              RELATIONSHIP_ACTIVITY_TYPE,
+//                                                              relationship.getSender().getProfile().getFullName() + " has invited "
+//                                                              + relationship.getReceiver().getProfile().getFullName() + " to connect", null);
+//      activity2.setTitleId(TitleId.CONNECTION_REQUESTED.toString());
+//      activity2.setTemplateParams(params);
+//      activityManager.saveActivityNoReturn(relationship.getReceiver(), activity2);
+//
+//    } catch (Exception e) {
+//      LOG.warn("Failed to publish event " + event + ": " + e.getMessage());
+//    }
   }
 
   /**

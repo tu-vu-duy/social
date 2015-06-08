@@ -17,6 +17,7 @@
 package org.exoplatform.social.core.application;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.exoplatform.services.log.ExoLogger;
@@ -49,6 +50,9 @@ public class RelationshipPublisherTest extends  AbstractCoreTest {
   private Identity rootIdentity;
   private Identity demoIdentity;
   private Identity johnIdentity;
+  private Identity maryIdentity;
+  private Identity raulIdentity;
+  private Identity paulIdentity;
   
   public void setUp() throws Exception {
     super.setUp();
@@ -67,6 +71,9 @@ public class RelationshipPublisherTest extends  AbstractCoreTest {
     rootIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "root", true);
     demoIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "demo", true);
     johnIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "john", true);
+    maryIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "mary", true);
+    raulIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "raul", true);
+    paulIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "paul", true);
   }
 
   public void tearDown() throws Exception {
@@ -80,7 +87,49 @@ public class RelationshipPublisherTest extends  AbstractCoreTest {
     identityManager.deleteIdentity(rootIdentity);
     identityManager.deleteIdentity(demoIdentity);
     identityManager.deleteIdentity(johnIdentity);
+    identityManager.deleteIdentity(maryIdentity);
+    identityManager.deleteIdentity(raulIdentity);
+    identityManager.deleteIdentity(paulIdentity);
     super.tearDown();
+  }
+  
+  public void testConfirmedManyRelationship() {
+      
+    Relationship rootToDemoRelationship = relationshipManager.inviteToConnect(demoIdentity, rootIdentity);
+    Relationship rootToJohnRelationship = relationshipManager.inviteToConnect(johnIdentity, rootIdentity);
+    Relationship rootToMaryRelationship = relationshipManager.inviteToConnect(maryIdentity, rootIdentity);
+    Relationship rootToRaulRelationship = relationshipManager.inviteToConnect(raulIdentity, rootIdentity);
+    Relationship rootToPaulRelationship = relationshipManager.inviteToConnect(paulIdentity, rootIdentity);
+    
+    relationshipManager.confirm(rootIdentity, demoIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToDemoRelationship));
+    relationshipManager.confirm(rootIdentity, johnIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToJohnRelationship));
+    relationshipManager.confirm(rootIdentity, maryIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToMaryRelationship));
+    relationshipManager.confirm(rootIdentity, raulIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToRaulRelationship));
+    relationshipManager.confirm(rootIdentity, paulIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToPaulRelationship));
+    
+    String rootActivityId =  identityStorage.getProfileActivityId(rootIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    assertNotNull(rootActivityId);
+    ExoSocialActivity rootActivity = activityManager.getActivity(rootActivityId);
+    List<ExoSocialActivity> rootComments = activityManager.getCommentsWithListAccess(rootActivity).loadAsList(0, 10);
+    assertEquals(5, rootComments.size());
+    assertEquals("I'm now connected with 5 user(s)",rootActivity.getTitle());
+    
+    String johnActivityId =  identityStorage.getProfileActivityId(johnIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    String maryActivityId =  identityStorage.getProfileActivityId(maryIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    String demoActivityId =  identityStorage.getProfileActivityId(demoIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    String raulActivityId =  identityStorage.getProfileActivityId(raulIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    String paulActivityId =  identityStorage.getProfileActivityId(paulIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    activityManager.deleteActivity(rootActivityId);
+    activityManager.deleteActivity(johnActivityId);
+    activityManager.deleteActivity(maryActivityId);
+    activityManager.deleteActivity(demoActivityId);
+    activityManager.deleteActivity(raulActivityId);
+    activityManager.deleteActivity(paulActivityId);
   }
 
   /**
@@ -127,6 +176,7 @@ public class RelationshipPublisherTest extends  AbstractCoreTest {
     assertEquals("I'm now connected with Root Root",johnComments.get(0).getTitle());
     
     //remove a connection will re-updated activity's title
+    rootToJohnRelationship = relationshipManager.get(rootIdentity, johnIdentity);
     relationshipManager.delete(rootToJohnRelationship);
     relationshipPublisher.removed(new RelationshipEvent(Type.REMOVE, relationshipManager, rootToJohnRelationship));
     
@@ -141,4 +191,54 @@ public class RelationshipPublisherTest extends  AbstractCoreTest {
     activityManager.deleteActivity(demoActivity);
     
   }
+  
+  public void testConfirmedAndUpdateProfile() throws Exception {
+    Profile profile = rootIdentity.getProfile();
+
+    profile.setAttachedActivityType(Profile.AttachedActivityType.USER);
+    assertNull(getActivityId(profile));
+
+    //update the profile for the first time
+    profile.setProperty(Profile.POSITION, "developer");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
+    identityManager.updateProfile(profile);
+
+    //from now, activity must not be null
+    assertNotNull(getActivityId(profile));
+
+    String activityId = getActivityId(profile);
+    ExoSocialActivity activity = activityManager.getActivity(activityId);
+
+    List<ExoSocialActivity> comments = activityManager.getCommentsWithListAccess(activity).loadAsList(0, 20);
+    //Number of comments must be 1
+    assertEquals(1, comments.size());
+    assertEquals("Contact informations has been updated.", comments.get(0).getTitle());
+
+    Relationship rootToDemoRelationship = relationshipManager.inviteToConnect(rootIdentity, demoIdentity);
+    relationshipManager.confirm(rootIdentity, demoIdentity);
+    relationshipPublisher.confirmed(new RelationshipEvent(Type.CONFIRM, relationshipManager, rootToDemoRelationship));
+
+    String rootActivityId =  identityStorage.getProfileActivityId(rootIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    assertNotNull(rootActivityId);
+    ExoSocialActivity rootActivity = activityManager.getActivity(rootActivityId);
+    List<ExoSocialActivity> rootComments = activityManager.getCommentsWithListAccess(rootActivity).loadAsList(0, 10);
+    assertEquals(1, rootComments.size());
+    assertEquals("I'm now connected with 1 user(s)",rootActivity.getTitle());
+    assertEquals("I'm now connected with Demo gtn",rootComments.get(0).getTitle());
+    String demoActivityId =  identityStorage.getProfileActivityId(demoIdentity.getProfile(), Profile.AttachedActivityType.RELATIONSHIP);
+    assertNotNull(demoActivityId);
+    ExoSocialActivity demoActivity = activityManager.getActivity(demoActivityId);
+    List<ExoSocialActivity> demoComments = activityManager.getCommentsWithListAccess(demoActivity).loadAsList(0, 10);
+    assertEquals(1, demoComments.size());
+    assertEquals("I'm now connected with 1 user(s)",demoActivity.getTitle());
+    assertEquals("I'm now connected with Root Root",demoComments.get(0).getTitle());
+    relationshipManager.delete(rootToDemoRelationship);
+    activityManager.deleteActivity(rootActivity);
+    activityManager.deleteActivity(demoActivity);
+  }
+
+  private String getActivityId(Profile profile) {
+    return identityStorage.getProfileActivityId(profile, Profile.AttachedActivityType.USER);
+  }
+
 }

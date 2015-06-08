@@ -41,7 +41,7 @@ import org.exoplatform.webui.form.UIFormTextAreaInput;
  */
 @ComponentConfig(
   lifecycle = UIFormLifecycle.class,
-  template = "classpath:groovy/social/webui/composer/UIComposer.gtmpl",
+  template = "war:/groovy/social/webui/composer/UIComposer.gtmpl",
   events = {
     @EventConfig(listeners = UIComposer.PostMessageActionListener.class)
   }
@@ -50,7 +50,8 @@ public class UIComposer extends UIForm {
 
   public enum PostContext {
     SPACE,
-    USER
+    USER,
+    SINGLE
   }
 
   private PostContext postContext;
@@ -199,6 +200,10 @@ public class UIComposer extends UIForm {
       //post activity via the current activity composer
       activityComposerManager.getCurrentActivityComposer().postActivity(postContext, uiComposer, event.getRequestContext(), message);
       
+      //clear client cache
+      Utils.clearUserProfilePopup();
+      
+      Utils.initUserProfilePopup(uiComposer.getId());
       Utils.resizeHomePage();
     }
   }

@@ -24,6 +24,12 @@ import org.exoplatform.social.common.lifecycle.LifeCycleListener;
  * @version $Revision$
  */
 public interface ProfileListener extends LifeCycleListener<ProfileLifeCycleEvent> {
+  
+  /**
+   * about me of the profile is updated
+   * @param event
+   */
+  public void aboutMeUpdated(ProfileLifeCycleEvent event) ;
 
   /**
    * avatar picture of the profile is updated
@@ -34,7 +40,9 @@ public interface ProfileListener extends LifeCycleListener<ProfileLifeCycleEvent
   /**
    * basic account info of the profile are updated
    * @param event
+   * @deprecated not used anymore. Will be removed in next major version release.
    */
+  @Deprecated
   public void basicInfoUpdated(ProfileLifeCycleEvent event);
 
   /**
@@ -52,7 +60,15 @@ public interface ProfileListener extends LifeCycleListener<ProfileLifeCycleEvent
   /**
    * header section of the profile is updated
    * @param event
+   * @deprecated not used anymore. Will be removed in next major version release.
    */
+  @Deprecated
   public void headerSectionUpdated(ProfileLifeCycleEvent event) ;
+  
+  /**
+   * new profile created
+   * @param event
+   */
+  public void createProfile(ProfileLifeCycleEvent event) ;
 
 }

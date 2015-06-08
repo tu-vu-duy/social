@@ -20,14 +20,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.exoplatform.application.registry.Application;
 import org.exoplatform.portal.application.PortalRequestContext;
+import org.exoplatform.portal.application.RequestNavigationData;
 import org.exoplatform.portal.config.DataStorage;
 import org.exoplatform.portal.config.model.Page;
+import org.exoplatform.portal.config.UserACL;
+import org.exoplatform.portal.mop.page.PageContext;
+import org.exoplatform.portal.mop.page.PageKey;
+import org.exoplatform.portal.mop.page.PageService;
 import org.exoplatform.portal.mop.user.UserNode;
 import org.exoplatform.portal.mop.user.UserPortal;
 import org.exoplatform.portal.webui.portal.UIPortal;
 import org.exoplatform.portal.webui.util.Util;
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
+import org.exoplatform.social.common.router.ExoRouter;
+import org.exoplatform.social.common.router.ExoRouter.Route;
 import org.exoplatform.social.core.space.SpaceException;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
@@ -44,7 +52,7 @@ import org.exoplatform.webui.event.EventListener;
 
 
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/space/UISpaceMenu.gtmpl",
+  template = "war:/groovy/social/webui/space/UISpaceMenu.gtmpl",
   events = {
     @EventConfig(name = "RenameSpaceAppName", listeners = UISpaceMenu.RenameSpaceAppNameActionListener.class)
   }
@@ -71,6 +79,10 @@ public class UISpaceMenu extends UIContainer {
   
   private static final String DEFAULT_APP_ID = "DefaultAppId";
   
+  private static final String APP_NAME = "appName";
+
+  private static final Log LOG = ExoLogger.getLogger(UISpaceMenu.class);
+  
   /**
    * Stores SpaceService object.
    */
@@ -81,15 +93,12 @@ public class UISpaceMenu extends UIContainer {
    */
   private Space space = null;
 
-  private List<Application> appList;
-  
   /**
    * Constructor.
    *
    * @throws Exception
    */
   public UISpaceMenu() throws Exception {
-    appList = SpaceUtils.getApplications(getSpace().getGroupId());
     spaceService = getSpaceService(); 
   }
 
@@ -106,18 +115,24 @@ public class UISpaceMenu extends UIContainer {
     if (space == null) {
       return new ArrayList<UserNode>(0);
     }
-
-    UserNode spaceUserNode = SpaceUtils.getSpaceUserNode(space);
     
-    UserNode hiddenNode = spaceUserNode.getChild(SPACE_SETTINGS);
+    List<UserNode> userNodeArraySorted = new ArrayList<UserNode>();
     
-    if (!hasSettingPermission() && (hiddenNode != null)) {
-      spaceUserNode.removeChild(hiddenNode.getName());
+    try {
+      UserNode spaceUserNode = SpaceUtils.getSpaceUserNode(space);
+      
+      UserNode hiddenNode = spaceUserNode.getChild(SPACE_SETTINGS);
+      
+      if (!hasSettingPermission() && (hiddenNode != null)) {
+        spaceUserNode.removeChild(hiddenNode.getName());
+      }
+      
+      userNodeArraySorted.addAll(spaceUserNode.getChildren());
+      
+      removeNonePageNodes(userNodeArraySorted); 
+    } catch (Exception e) {
+      LOG.warn("Get UserNode of Space failed.");
     }
-    
-    List<UserNode> userNodeArraySorted = new ArrayList<UserNode>(spaceUserNode.getChildren());
-    
-    removeNonePageNodes(userNodeArraySorted); 
     
     //SOC-2290 Need to comment the bellow line, sort by in configuration XML file.
     //Collections.sort(userNodeArraySorted, new ApplicationComparator());
@@ -251,10 +266,14 @@ public class UISpaceMenu extends UIContainer {
    * @throws Exception
    */
   public String getAppSelected() throws Exception {
-    UIPortal uiPortal = Util.getUIPortal();
-    UserNode selectedNode = uiPortal.getSelectedUserNode();
-    String[] split = selectedNode.getURI().split("/");
-    return split[split.length - 1];
+    PortalRequestContext plcontext = Util.getPortalRequestContext();
+    String requestPath = plcontext.getControllerContext().getParameter(RequestNavigationData.REQUEST_PATH);
+    Route route = ExoRouter.route(requestPath);
+    if (route == null) {
+      return null;
+    }
+    //
+    return route.localArgs.get(APP_NAME);
   }
 
   /**
@@ -284,31 +303,6 @@ public class UISpaceMenu extends UIContainer {
     Space space = getSpace();
     return spaceService.hasSettingPermission(space, userId);
   }
-
-  protected String getAppIcon(String pageRef) {
-    String spaceUrl = Utils.getSpaceUrlByContext();
-    Space space = getSpaceService().getSpaceByUrl(spaceUrl);
-    String installedApps = space.getApp();
-    String[] apps = installedApps.split(",");
-    String[] appParts = null;
-    String appName = pageRef.substring(pageRef.lastIndexOf("::") + 2);
-    
-    for (String app : apps) {
-      if (app.length() != 0) {
-        appParts = app.split(":");
-        if (appParts[0].equals(appName) || appParts[1].equals(appName)) {
-          // get application icon by portlet name
-          for (Application application : appList) {
-            if (application.getApplicationName().equals(appParts[0])) {
-              return application.getIconURL();
-            }
-          }
-        }
-      }
-    }
-    
-    return null;
-  }
  
   /**
    * Gets spaceService.
@@ -330,9 +324,7 @@ public class UISpaceMenu extends UIContainer {
    */
   private Space getSpace() {
     if (space == null) {
-      spaceService = getSpaceService();
-      String spaceUrl = Utils.getSpaceUrlByContext();
-      space = spaceService.getSpaceByUrl(spaceUrl);
+      space = Utils.getSpaceByContext();
     }
     return space;
   }
@@ -405,12 +397,18 @@ public class UISpaceMenu extends UIContainer {
  * @since 4.0.1-GA
  */
 private void removeNonePageNodes(List<UserNode> nodes) {
-  
   List<UserNode> nonePageNodes = new ArrayList<UserNode>();
-  
+  UserACL userACL = SpaceUtils.getUserACL();
+  boolean noPageNode;
   for (UserNode node : nodes) {
-    if (node.getPageRef() == null) {
+    PageKey currentPage = node.getPageRef();
+    if (currentPage == null) {
       nonePageNodes.add(node);
+    } else {
+      PageContext currentPageContext = getApplicationComponent(PageService.class).loadPage(currentPage);
+      if (currentPageContext == null || !userACL.hasPermission(currentPageContext)) {
+        nonePageNodes.add(node);
+      }
     }
   }
   

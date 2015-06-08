@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.jcr.query.Row;
 import javax.jcr.query.RowIterator;
 
+import org.apache.lucene.queryParser.QueryParser;
 import org.exoplatform.commons.api.search.data.SearchContext;
 import org.exoplatform.commons.api.search.data.SearchResult;
 import org.exoplatform.commons.utils.ListAccess;
@@ -48,7 +49,7 @@ public class PeopleSearchConnector extends AbstractSocialSearchConnector {
     ProfileFilter filter = new ProfileFilter();
     filter.setAll(query);
     filter.setSorting(sorting);
-    ListAccess<Identity> la = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, filter, true);
+    ListAccess<Identity> la = identityManager.getIdentitiesForUnifiedSearch(OrganizationIdentityProvider.NAME, filter);
     
     try {
       
@@ -114,18 +115,20 @@ public class PeopleSearchConnector extends AbstractSocialSearchConnector {
     .not().equals(ProfileEntity.deleted, "true");
     
     if (filter.getAll().length() != 0) {
-      String value = filter.getAll();
+      String value = StorageUtils.escapeSpecialCharacter(filter.getAll());
 
-      whereExpression.and().startGroup()
-          .contains(ProfileEntity.fullName, value.toLowerCase())
-          .or().contains(ProfileEntity.firstName, value.toLowerCase())
-          .or().contains(ProfileEntity.lastName, value.toLowerCase())
-          .or().contains(ProfileEntity.position, value.toLowerCase())
-          .or().contains(ProfileEntity.skills, value.toLowerCase())
-          .or().contains(ProfileEntity.positions, value.toLowerCase())
-          .or().contains(ProfileEntity.organizations, value.toLowerCase())
-          .or().contains(ProfileEntity.jobsDescription, value.toLowerCase())
-          .endGroup();
+      if (value.trim().length() > 0 || value.replaceAll(" ", "").trim().length() > 0) {
+        whereExpression.and().startGroup()
+            .contains(ProfileEntity.fullName, value.toLowerCase())
+            .or().contains(ProfileEntity.firstName, value.toLowerCase())
+            .or().contains(ProfileEntity.lastName, value.toLowerCase())
+            .or().contains(ProfileEntity.position, value.toLowerCase())
+            .or().contains(ProfileEntity.skills, value.toLowerCase())
+            .or().contains(ProfileEntity.positions, value.toLowerCase())
+            .or().contains(ProfileEntity.organizations, value.toLowerCase())
+            .or().contains(ProfileEntity.jobsDescription, value.toLowerCase())
+            .endGroup();
+      }
     }
     
     //

@@ -27,9 +27,11 @@ import org.exoplatform.social.core.space.SpaceAccessType;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.webui.Utils;
+import org.exoplatform.web.application.JavascriptManager;
 import org.exoplatform.web.application.RequestContext;
 import org.exoplatform.web.url.navigation.NavigationResource;
 import org.exoplatform.web.url.navigation.NodeURL;
+import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
 import org.exoplatform.webui.core.UIContainer;
@@ -41,7 +43,7 @@ import org.exoplatform.webui.event.EventListener;
  */
 
 @ComponentConfig(
-  template="classpath:groovy/social/webui/space/UISpaceAccess.gtmpl",
+  template="war:/groovy/social/webui/space/UISpaceAccess.gtmpl",
   events = {
     @EventConfig(listeners = UISpaceAccess.AcceptActionListener.class),
     @EventConfig(listeners = UISpaceAccess.RequestToJoinActionListener.class),
@@ -93,8 +95,12 @@ public class UISpaceAccess extends UIContainer {
       this.spacePrettyName = spacePrettyNameObj.toString();
       Space space = Utils.getSpaceService().getSpaceByPrettyName(spacePrettyName);
       this.spaceDisplayName = space.getDisplayName();
-      
-      if ("social.space.access.not-access-wiki-space".equals(status)) {
+      //
+      if (SpaceAccessType.NO_AUTHENTICATED.toString().equals(status)) {
+        redirectToSpaceHome(space);
+      }
+      //
+      if (SpaceAccessType.NOT_ACCESS_WIKI_SPACE.toString().equals(status)) {
         
         Object wikiPageObj = pcontext.getRequest().getSession().getAttribute(SpaceAccessType.ACCESSED_SPACE_WIKI_PAGE_KEY);
 
@@ -108,7 +114,12 @@ public class UISpaceAccess extends UIContainer {
     }
   }
   
-  
+  private void redirectToSpaceHome(Space space) {
+    WebuiRequestContext ctx = WebuiRequestContext.getCurrentInstance();
+    JavascriptManager jsManager = ctx.getJavascriptManager();
+    jsManager.addJavascript("try { window.location.href='" + Utils.getSpaceHomeURL(space) + "' } catch(e) {" +
+        "window.location.href('" + Utils.getSpaceHomeURL(space) + "') }");
+  }
   
   public String getStatus() {
     return status;

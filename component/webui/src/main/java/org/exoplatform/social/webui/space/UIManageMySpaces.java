@@ -19,7 +19,6 @@ package org.exoplatform.social.webui.space;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.mop.user.UserNavigation;
@@ -40,10 +39,9 @@ import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.core.UIPopupWindow;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 @ComponentConfig(
-  template="classpath:groovy/social/webui/space/UIManageMySpaces.gtmpl",
+  template="war:/groovy/social/webui/space/UIManageMySpaces.gtmpl",
   events = {
     @EventConfig(listeners = UIManageMySpaces.DeleteSpaceActionListener.class),
     @EventConfig(listeners = UIManageMySpaces.LeaveSpaceActionListener.class),
@@ -65,7 +63,7 @@ public class UIManageMySpaces extends UIContainer {
   private static final String SEARCH_ALL = "All";
   private static final String SPACE_SEARCH = "SpaceSearch";
 
-  private final Integer SPACES_PER_PAGE = 20;
+  private final Integer SPACES_PER_PAGE = 20; 
   private SpaceService spaceService = null;
   private String userId = null;
   private List<Space> spaces; // for search result
@@ -108,7 +106,11 @@ public class UIManageMySpaces extends UIContainer {
       loadingCapacity = SPACES_PER_PAGE;
       mySpacesList = new ArrayList<Space>();
       setMySpacesList(loadMySpaces(currentLoadIndex, loadingCapacity));
-      setSelectedChar(SEARCH_ALL);
+      if (this.selectedChar != null){
+        setSelectedChar(this.selectedChar);
+      } else {
+        setSelectedChar(SEARCH_ALL);
+      }      
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
     }
@@ -185,13 +187,14 @@ public class UIManageMySpaces extends UIContainer {
    * @since 1.2.2 
    */
   public List<Space> getMySpacesList() throws Exception {
+    this.mySpacesList = loadMySpaces(0, currentLoadIndex + loadingCapacity);
+    int realMySpacesListSize = mySpacesList.size();
     if (isHasUpdatedSpace()) {
       setHasUpdatedSpace(false);
-      setMySpacesList(loadMySpaces(0, this.mySpacesList.size()));
     }
     
-    setEnableLoadNext((this.mySpacesList.size() >= SPACES_PER_PAGE)
-            && (this.mySpacesList.size() < getMySpacesNum()));
+    setEnableLoadNext((realMySpacesListSize >= SPACES_PER_PAGE)
+            && (realMySpacesListSize < getMySpacesNum()));
     
     return this.mySpacesList;
   }
@@ -349,11 +352,9 @@ public class UIManageMySpaces extends UIContainer {
       if (charSearch == null) {
         uiManageMySpaces.setSelectedChar(null);
       } else {
-        ResourceBundle resApp = ctx.getApplicationResourceBundle();
-        String defaultSpaceNameAndDesc = resApp.getString(uiManageMySpaces.getId() + ".label.DefaultSpaceNameAndDesc");
-        ((UIFormStringInput) uiManageMySpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH)).setValue(defaultSpaceNameAndDesc);
-        uiManageMySpaces.setSelectedChar(charSearch);
+        uiManageMySpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH).setValue("");
         uiManageMySpaces.uiSpaceSearch.setSpaceNameSearch(null);
+        uiManageMySpaces.setSelectedChar(charSearch);
       }
       
       uiManageMySpaces.loadSearch();

@@ -19,13 +19,11 @@ package org.exoplatform.social.webui.connections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.identity.model.Identity;
-import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.webui.Utils;
@@ -38,7 +36,6 @@ import org.exoplatform.webui.core.UIApplication;
 import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 /**
  * Displays the list of all existing users and their information. By using this UIAllPeople component, users could manage
@@ -49,7 +46,7 @@ import org.exoplatform.webui.form.UIFormStringInput;
  * @since 1.2.2
  */
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/connections/UIAllPeople.gtmpl",
+  template = "war:/groovy/social/webui/connections/UIAllPeople.gtmpl",
   events = {
     @EventConfig(listeners = UIAllPeople.ConnectActionListener.class),
     @EventConfig(listeners = UIAllPeople.ConfirmActionListener.class),
@@ -96,18 +93,9 @@ public class UIAllPeople extends UIContainer {
   private List<Identity> peopleList;
   private ListAccess<Identity> peopleListAccess;
   private int peopleNum;
-  private boolean hasPeopleTab;
   String selectedChar = null;
   private Identity lastOwner = null;
   
-  public boolean isHasPeopleTab() {
-    return hasPeopleTab;
-  }
-
-  public void setHasPeopleTab(boolean hasPeopleTab) {
-    this.hasPeopleTab = hasPeopleTab;
-  }
-
   /**
    * Gets selected character when search by alphabet.
    *
@@ -132,8 +120,8 @@ public class UIAllPeople extends UIContainer {
    * @throws Exception
    */
   public UIAllPeople() throws Exception {
+    addChild(UIUpdateRelationship.class, null, null);
     uiProfileUserSearch = addChild(UIProfileUserSearch.class, null, null);
-    setHasPeopleTab(true);
     uiProfileUserSearch.setHasConnectionLink(false);
     setSelectedChar(ALL_FILTER);
     init();
@@ -347,8 +335,12 @@ public class UIAllPeople extends UIContainer {
         return;
       }
       
-      Utils.getRelationshipManager().inviteToConnect(invitingIdentity, invitedIdentity);
-      event.getRequestContext().addUIComponentToUpdateByAjax(uiAllPeople);
+      relationship = Utils.getRelationshipManager().inviteToConnect(invitingIdentity, invitedIdentity);
+      Utils.clearCacheOnUserPopup();
+      //
+      UIUpdateRelationship updateUserRelationship = uiAllPeople.getChild(UIUpdateRelationship.class);
+      updateUserRelationship.setIdentity(invitedIdentity).setRelationship(relationship);
+      event.getRequestContext().addUIComponentToUpdateByAjax(updateUserRelationship);
     }
   }
 
@@ -374,8 +366,12 @@ public class UIAllPeople extends UIContainer {
       }
       
       Utils.getRelationshipManager().confirm(invitedIdentity, invitingIdentity);
-      
-      event.getRequestContext().addUIComponentToUpdateByAjax(uiAllPeople);
+      Utils.clearCacheOnUserPopup();
+      //
+      relationship = Utils.getRelationshipManager().get(invitingIdentity, invitedIdentity);
+      UIUpdateRelationship updateUserRelationship = uiAllPeople.getChild(UIUpdateRelationship.class);
+      updateUserRelationship.setIdentity(invitedIdentity).setRelationship(relationship);
+      event.getRequestContext().addUIComponentToUpdateByAjax(updateUserRelationship);
     }
   }
 
@@ -405,8 +401,10 @@ public class UIAllPeople extends UIContainer {
       } else {
         Utils.getRelationshipManager().deny(inviIdentityIdentity, invitingIdentity);
       }
-      
-      event.getRequestContext().addUIComponentToUpdateByAjax(uiAllPeople);
+      Utils.clearCacheOnUserPopup();
+      UIUpdateRelationship updateUserRelationship = uiAllPeople.getChild(UIUpdateRelationship.class);
+      updateUserRelationship.setIdentity(inviIdentityIdentity).setRelationship(null);
+      event.getRequestContext().addUIComponentToUpdateByAjax(updateUserRelationship);
     }
   }
 
@@ -424,21 +422,11 @@ public class UIAllPeople extends UIContainer {
       UIProfileUserSearch uiSearch = uiAllPeople.uiProfileUserSearch;
       
       String charSearch = ctx.getRequestParameter(OBJECTID);
-      
-      ResourceBundle resApp = ctx.getApplicationResourceBundle();
-
-      String defaultNameVal = resApp.getString(uiSearch.getId() + ".label.Name");
-      String defaultPosVal = resApp.getString(uiSearch.getId() + ".label.Position");
-      String defaultSkillsVal = resApp.getString(uiSearch.getId() + ".label.Skills");
-      
       ProfileFilter filter = uiAllPeople.uiProfileUserSearch.getProfileFilter();
       
       try {
         uiAllPeople.setSelectedChar(charSearch);
         if (charSearch != null) { // search by alphabet
-          ((UIFormStringInput) uiSearch.getChildById(SEARCH)).setValue(defaultNameVal);
-          ((UIFormStringInput) uiSearch.getChildById(Profile.POSITION)).setValue(defaultPosVal);
-          ((UIFormStringInput) uiSearch.getChildById(Profile.EXPERIENCES_SKILLS)).setValue(defaultSkillsVal);
           filter.setName(charSearch);
           filter.setPosition("");
           filter.setSkills("");
@@ -457,8 +445,6 @@ public class UIAllPeople extends UIContainer {
       } catch (Exception e) {
         uiSearch.setIdentityList(new ArrayList<Identity>());
       }
-      
-      
       uiAllPeople.loadSearch();
       uiAllPeople.setLoadAtEnd(false);
     }

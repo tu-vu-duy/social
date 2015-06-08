@@ -28,7 +28,7 @@
     DOUBLE_COMMA: "double_comma",
     ENTER_KEY_CODE: 13,
 	  changeLinkContent: function () {
-	    var link = decodeURI(this.linkData.link),
+	    var link = this.linkData.link || '',
 	    title = this.linkData.title;
 	    image = this.linkData.image;
 	    description = this.linkData.description;
@@ -73,20 +73,17 @@
 	    var updateElement = function(editableEl) {
 	        //hide this, set new value and display
 	        var oldEl = $(editableEl).prev();
-	        if (oldEl.html() != null) { //IE
-	            oldEl.html($(editableEl).val());
-	        } else {
-	            oldEl.text($(editableEl).val()) ;
-	        }
+	        oldEl.text($(editableEl).val()).html();
+	        
 	        //updates data
 	        //detects element by class, if class contains ContentTitle -> update title,
 	        // if class contains ContentDescription -> update description
 	        oldEl.css('display',"block")
 	        if (oldEl.hasClass('title')) {
-	          UIComposerLinkExtension.linkData.title = $(editableEl).val();
+	          UIComposerLinkExtension.linkData.title = encodeURIComponent($(editableEl).val());
 	          UIComposerLinkExtension.changeLinkContent.apply(UIComposerLinkExtension);
 	        } else if (oldEl.hasClass('content')) {
-	          UIComposerLinkExtension.linkData.description = $(editableEl).val();
+	          UIComposerLinkExtension.linkData.description = encodeURIComponent($(editableEl).val());
 	          UIComposerLinkExtension.changeLinkContent.apply(UIComposerLinkExtension);
 	        }
 	        $(editableEl).remove();
@@ -101,8 +98,8 @@
 	    this.linkInfoDisplayed = params.linkInfoDisplayed || false;
 	    this.inputLinkId = params.inputLinkId || 'inputLink';
 	    this.attachButtonId = params.attachButtonId || 'attachButton';
-	    this.attachUrl = decodeURI(params.attachUrl || "");
-	    this.changeLinkContentUrl = decodeURI(params.changeLinkContentUrl || "");
+	    this.attachUrl = encodeURI(decodeURIComponent(params.attachUrl || ""));
+	    this.changeLinkContentUrl = encodeURI(decodeURIComponent(params.changeLinkContentUrl || ""));
 	    this.shownThumbnailIndex = params.shownThumbnailIndex || 0;
 	    this.uiThumbnailDisplayId = params.uiThumbnailDisplayId || 'UIThumbnailDisplay';
 	    this.thumbnailsId = params.thumbnailsId || 'Thumbnails';
@@ -111,17 +108,7 @@
 	    this.statsId = params.statsId || 'Stats';
 	    this.thumbnailCheckboxId = params.thumbnailCheckboxId || 'ThumbnailCheckbox';
 	    this.linkData = params.linkData || {};
-	    
-	    var comp = UIComposerLinkExtension;
-      if (this.linkData.title) {
-        this.linkData.title = this.linkData.title.replace(/comp.SINGLE_COMMA/g, "&#39;");
-        this.linkData.title = this.linkData.title.replace(/comp.DOUBLE_COMMA/g, "&quot;");
-      }
-      
-      if (this.linkData.description) { 
-        this.linkData.description = this.linkData.description.replace(/comp.SINGLE_COMMA/g, "&#39;");
-        this.linkData.description = this.linkData.description.replace(/comp.DOUBLE_COMMA/g, "&quot;");
-      }
+
 	    if (!this.attachUrl) {
 	      alert('error: attachUrl is null!');
 	    }
@@ -216,24 +203,10 @@
 	    } else {
 	      this.inputLink = $('#' + this.inputLinkId);
 	      this.attachButton = $('#' + this.attachButtonId);
-	      this.inputLink.val(UIComposerLinkExtension.HTTP);
-	      this.inputLink.css('color', UIComposerLinkExtension.GRAY_COLOR);
 	      var UIComposerLinkExtension = this;
 	      var inputLink = this.inputLink;
 	      var attachBtn = this.attachButton;
-	      inputLink.on('focus', function(evt) {
-	        if (inputLink.val() === UIComposerLinkExtension.HTTP) {
-	          inputLink.val('');
-	          inputLink.css('color', UIComposerLinkExtension.BLACK_COLOR);
-	        }
-	      });
-	      
-	      this.inputLink.on('blur', function(evt) {
-	        if (inputLink.val() === '') {
-	          inputLink.val(UIComposerLinkExtension.HTTP);
-	          inputLink.css('color', UIComposerLinkExtension.GRAY_COLOR);
-	        }
-	      });
+
 	      
 	      this.inputLink.on('keypress', function(evt) {
 	        //if enter submit link
@@ -244,10 +217,11 @@
 	      
 	      this.attachButton.removeAttr('disabled');
 	      this.attachButton.on( 'click', function(evt) {
-	        if (inputLink.val() === '' || inputLink.val() === UIComposerLinkExtension.HTTP) {
+	        if (inputLink.val() === '') {
 	          return;
 	        }
-	        var url = UIComposerLinkExtension.attachUrl.replace(/&amp;/g, "&") + '&objectId='+ encodeURIComponent(inputLink.val()) + '&ajaxRequest=true';
+	        var urlInput =  encodeURIComponent(encodeURI(inputLink.val()));
+	        var url = UIComposerLinkExtension.attachUrl.replace(/&amp;/g, "&") + '&objectId=' + urlInput + '&ajaxRequest=true';
 	        ajaxGet(url, function(){
 	          try {
 	            $('textarea#composerInput').exoMentions('showButton', function() {});

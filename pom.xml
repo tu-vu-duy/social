@@ -10,7 +10,7 @@
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU Affero General Public License for more details.
 
     You should have received a copy of the GNU Affero General Public License
@@ -22,12 +22,12 @@
   <parent>
     <artifactId>maven-parent-pom</artifactId>
     <groupId>org.exoplatform</groupId>
-    <version>11</version>
+    <version>14</version>
     <relativePath />
   </parent>
   <groupId>org.exoplatform.social</groupId>
   <artifactId>social</artifactId>
-  <version>4.1.0-SNAPSHOT</version>
+  <version>4.3.x-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>eXo Social</name>
   <description>eXo Social - Enterprise Social Networking</description>
@@ -55,23 +55,25 @@
     <!-- **************************************** -->
     <!-- Project Dependencies                     -->
     <!-- **************************************** -->
-    <org.exoplatform.depmgt.version>7</org.exoplatform.depmgt.version>
+    <org.exoplatform.depmgt.version>11-SNAPSHOT</org.exoplatform.depmgt.version>
     <!-- JCR Project Dependencies -->
-    <org.exoplatform.kernel.version>2.4.4-GA</org.exoplatform.kernel.version>
-    <org.exoplatform.core.version>2.5.4-GA</org.exoplatform.core.version>
-    <org.exoplatform.ws.version>2.3.4-GA</org.exoplatform.ws.version>
-    <org.exoplatform.jcr.version>1.15.4-GA</org.exoplatform.jcr.version>
+    <org.exoplatform.kernel.version>2.5.1-GA</org.exoplatform.kernel.version>
+    <org.exoplatform.core.version>2.6.1-GA</org.exoplatform.core.version>
+    <org.exoplatform.ws.version>2.4.1-GA</org.exoplatform.ws.version>
+    <org.exoplatform.jcr.version>1.16.1-GA</org.exoplatform.jcr.version>
     <!-- GateIn Project Dependencies -->
     <org.gatein.shindig.version>2.0.2.Final-gatein-4</org.gatein.shindig.version>
-    <org.gatein.common.version>2.1.0.Final</org.gatein.common.version>
-    <org.gatein.wci.version>2.3.0.Final</org.gatein.wci.version>
-    <org.gatein.pc.version>2.4.0.Final</org.gatein.pc.version>
-    <org.gatein.portal.version>3.5.4.Final</org.gatein.portal.version>
+    <org.gatein.common.version>2.2.2.Final</org.gatein.common.version>
+    <org.gatein.wci.version>2.4.1.Final</org.gatein.wci.version>
+    <org.gatein.pc.version>2.5.1.Final</org.gatein.pc.version>
+    <org.gatein.portal.version>4.3.x-PLF-SNAPSHOT</org.gatein.portal.version>
     <!-- Platform Project Dependencies -->
-    <org.exoplatform.commons.version>4.1.0-SNAPSHOT</org.exoplatform.commons.version>
-    <org.exoplatform.platform-ui.version>4.1.0-SNAPSHOT</org.exoplatform.platform-ui.version>
+    <org.exoplatform.commons.version>4.3.x-SNAPSHOT</org.exoplatform.commons.version>
+    <org.exoplatform.platform-ui.version>4.3.x-SNAPSHOT</org.exoplatform.platform-ui.version>
     <!-- Platform Project 3rd party Dependencies -->
-    <org.exoplatform.doc.doc-style.version>4.1.0-SNAPSHOT</org.exoplatform.doc.doc-style.version>
+    <org.exoplatform.doc.doc-style.version>4.3.x-SNAPSHOT</org.exoplatform.doc.doc-style.version>
+    <!-- For surefire and failsafe to be compatible with jacoco -->
+    <argLine>-Xmx1024m -XX:MaxPermSize=512m</argLine>
   </properties>
   <dependencyManagement>
     <!-- ### NEVER CHANGE THIS ORDER OF DEPMGT ### -->
@@ -88,7 +90,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <!-- Our own project modules -->
+      <!-- Declare our own artifacts -->
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social</artifactId>
+        <version>${project.version}</version>
+        <classifier>source-release</classifier>
+        <type>zip</type>
+      </dependency>
       <dependency>
         <groupId>org.exoplatform.social</groupId>
         <artifactId>social-component-common</artifactId>
@@ -97,6 +106,11 @@
       <dependency>
         <groupId>org.exoplatform.social</groupId>
         <artifactId>social-component-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-component-notification</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -112,11 +126,6 @@
       <dependency>
         <groupId>org.exoplatform.social</groupId>
         <artifactId>social-component-webui</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.exoplatform.social</groupId>
-        <artifactId>social-extension-config</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -138,12 +147,19 @@
       </dependency>
       <dependency>
         <groupId>org.exoplatform.social</groupId>
-        <artifactId>social-extras-feedmash</artifactId>
+        <artifactId>social-notification-extension</artifactId>
         <version>${project.version}</version>
+        <type>war</type>
       </dependency>
       <dependency>
         <groupId>org.exoplatform.social</groupId>
-        <artifactId>social-extras-link-composer-plugin</artifactId>
+        <artifactId>social-notification-extension</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-extras-feedmash</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -180,6 +196,18 @@
         <artifactId>social-webapp-portlet</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-webapp-juzu-portlet</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-webapp-juzu-portlet</artifactId>
+        <version>${project.version}</version>
+        <type>war</type>
       </dependency>
       <dependency>
         <groupId>org.exoplatform.social</groupId>
@@ -316,6 +344,11 @@
       </dependency>
       <dependency>
         <groupId>org.gatein.portal</groupId>
+        <artifactId>exo.portal.webui.core</artifactId>
+        <version>${org.gatein.portal.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.gatein.portal</groupId>
         <artifactId>exo.portal.webui.portlet</artifactId>
         <version>${org.gatein.portal.version}</version>
       </dependency>
@@ -365,6 +398,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+        <!-- This artifact isn't declared in kernel parent -->
+        <!-- We enforce it to have the good version in our packaging -->
+        <!-- remove it after migration to jcr 1.16.x-->
+        <dependency>
+            <groupId>org.exoplatform.kernel</groupId>
+            <artifactId>exo.kernel.component.ext.cache.impl.infinispan.v5</artifactId>
+            <version>${org.exoplatform.kernel.version}</version>
+        </dependency>
       <!-- Import versions from kernel project -->
       <dependency>
         <groupId>org.exoplatform.kernel</groupId>

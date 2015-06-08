@@ -24,16 +24,15 @@
   <parent>
     <artifactId>social</artifactId>
     <groupId>org.exoplatform.social</groupId>
-    <version>4.1.0-SNAPSHOT</version>
+    <version>4.3.x-SNAPSHOT</version>
   </parent>
   <artifactId>social-extension</artifactId>
-  <version>4.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>eXo Social Extension</name>
   <description>eXo Social Extension</description>
   <modules>
-    <module>config</module>
     <module>jar</module>
     <module>war</module>
+    <module>notification</module>
   </modules>
 </project>

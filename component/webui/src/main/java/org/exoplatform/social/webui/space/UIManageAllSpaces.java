@@ -19,7 +19,6 @@ package org.exoplatform.social.webui.space;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ResourceBundle;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.portal.webui.util.Util;
@@ -39,7 +38,6 @@ import org.exoplatform.webui.core.UIApplication;
 import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
-import org.exoplatform.webui.form.UIFormStringInput;
 
 /**
  * UI component to list all spaces that is associated with current logged-in user: public spaces to join,
@@ -49,7 +47,7 @@ import org.exoplatform.webui.form.UIFormStringInput;
  * @since 1.2.2
  */
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/space/UIManageAllSpaces.gtmpl",
+  template = "war:/groovy/social/webui/space/UIManageAllSpaces.gtmpl",
   events = {
     @EventConfig(listeners = UIManageAllSpaces.RequestToJoinActionListener.class),
     @EventConfig(listeners = UIManageAllSpaces.CancelInvitationActionListener.class),
@@ -121,7 +119,11 @@ public class UIManageAllSpaces extends UIContainer {
       loadingCapacity = SPACES_PER_PAGE;
       spacesList = new ArrayList<Space>();
       setSpacesList(loadSpaces(currentLoadIndex, loadingCapacity));
-      setSelectedChar(SEARCH_ALL);
+      if (this.selectedChar != null){
+        setSelectedChar(this.selectedChar);
+      } else {
+        setSelectedChar(SEARCH_ALL);
+      }   
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
     }
@@ -197,13 +199,15 @@ public class UIManageAllSpaces extends UIContainer {
    * @throws Exception 
    */
   public List<Space> getSpacesList() throws Exception {
+    this.spacesList = loadSpaces(0, this.spacesList.size());
+    int realSpacesListSize = this.spacesList.size();
+    
     if (isHasUpdatedSpace()) {
       setHasUpdatedSpace(false);
-      setSpacesList(loadSpaces(0, this.spacesList.size()));
     }
     
-    setEnableLoadNext((this.spacesList.size() >= SPACES_PER_PAGE)
-            && (this.spacesList.size() < getSpacesNum()));
+    setEnableLoadNext((realSpacesListSize >= SPACES_PER_PAGE)
+            && (realSpacesListSize < getSpacesNum()));
     
     return this.spacesList;
   }
@@ -393,11 +397,9 @@ public class UIManageAllSpaces extends UIContainer {
       if (charSearch == null) {
         uiManageAllSpaces.setSelectedChar(null);
       } else {
-        ResourceBundle resApp = ctx.getApplicationResourceBundle();
-        String defaultSpaceNameAndDesc = resApp.getString(uiManageAllSpaces.getId() + ".label.DefaultSpaceNameAndDesc");
-        ((UIFormStringInput) uiManageAllSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH)).setValue(defaultSpaceNameAndDesc);
-        uiManageAllSpaces.setSelectedChar(charSearch);
+        uiManageAllSpaces.uiSpaceSearch.getUIStringInput(SPACE_SEARCH).setValue("");
         uiManageAllSpaces.uiSpaceSearch.setSpaceNameSearch(null);
+        uiManageAllSpaces.setSelectedChar(charSearch);
       }
       
       uiManageAllSpaces.loadSearch();

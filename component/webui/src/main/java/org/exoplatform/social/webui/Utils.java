@@ -16,20 +16,35 @@
  */
 package org.exoplatform.social.webui;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpUtils;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.exoplatform.commons.utils.ExpressionUtil;
+import org.exoplatform.commons.utils.PropertyManager;
+import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.application.RequestNavigationData;
+import org.exoplatform.portal.config.UserPortalConfigService;
+import org.exoplatform.portal.mop.Described;
 import org.exoplatform.portal.mop.SiteType;
+import org.exoplatform.portal.mop.description.DescriptionService;
+import org.exoplatform.portal.mop.user.UserNavigation;
 import org.exoplatform.portal.mop.user.UserNode;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
 import org.exoplatform.social.common.router.ExoRouter;
 import org.exoplatform.social.common.router.ExoRouter.Route;
 import org.exoplatform.social.core.identity.model.Identity;
@@ -49,6 +64,7 @@ import org.exoplatform.web.url.navigation.NavigationResource;
 import org.exoplatform.web.url.navigation.NodeURL;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.application.portlet.PortletRequestContext;
+import org.json.JSONObject;
 
 /**
  * Contains some common methods for using as utility.<br>
@@ -73,6 +89,8 @@ public class Utils {
   
   /** */
   private static RequestNavInfo currentRequestNavData = null;
+  
+  private static Log             LOG = ExoLogger.getLogger(Utils.class);
   
   /**
    * Gets remote id of owner user (depends on URL: .../remoteId). If owner user is null, return viewer remote id
@@ -161,7 +179,49 @@ public class Utils {
   public static Identity getUserIdentity(String userName, boolean loadProfile) {
     return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, userName, loadProfile);
   }
+  
+  /**
+   * Check if an user is enable/disable from the remote id (user name)
+   * 
+   * @param userName
+   * @return true if user is enable else return false
+   */
+  public static boolean isEnableUser(String userName) {
+    return getUserIdentity(userName, false).isEnable();
+  }
+  
+  /**
+   * Get only users who are enable
+   * 
+   * @param users list of all users
+   * @return list of enable users
+   */
+  public static List<String> getEnableUsers(String[] users) {
+    if (users == null) {
+      return new ArrayList<String>();
+    }
+    List<String> results = new ArrayList<String>();
+    for (String user : users) {
+      if (!Utils.isEnableUser(user)) {
+        continue;
+      }
+      results.add(user);
+    }
+    return results;
+  }
 
+  /**
+   * Gets identity from the remote id (space name)
+   * 
+   * @param spaceName
+   * @param loadProfile
+   * @return space identity
+   * @since 4.1-RC1
+   */
+  public static Identity getSpaceIdentity(String spaceName, boolean loadProfile) {
+    return Utils.getIdentityManager().getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceName, loadProfile);
+  }
+  
   /**
    * Gets space identity of the owner space (from remote id)
    * 
@@ -203,7 +263,7 @@ public class Utils {
     UIWorkingWorkspace uiWorkingWS = Util.getUIPortalApplication().getChildById(UIPortalApplication.UI_WORKING_WS_ID);
     PortalRequestContext pContext = Util.getPortalRequestContext();
     pContext.addUIComponentToUpdateByAjax(uiWorkingWS);
-    pContext.setFullRender(true);
+    pContext.ignoreAJAXUpdateOnPortlets(true);
   }
 
   /**
@@ -252,6 +312,110 @@ public class Utils {
    */
   public static final SpaceService getSpaceService() {
     return (SpaceService) ExoContainerContext.getCurrentContainer().getComponentInstanceOfType(SpaceService.class);
+  }
+  
+  /**
+   * Gets ExoRouter
+   * @return ExoRouter
+   */
+  public static final ExoRouter getExoRouter() {
+    return (ExoRouter) ExoContainerContext.getCurrentContainer().getComponentInstanceOfType(ExoRouter.class);
+  }
+  
+  /**
+   * Get activity's id
+   * @return
+   */
+  public static String getActivityID() {
+    String uriActivity = getSelectedNode();
+    if (uriActivity != null) {
+      if ("activity".equals(uriActivity)) {
+        return getValueFromRequestParam("id");
+      } else {      
+        if (uriActivity.indexOf("view_full_activity") >= 0 || uriActivity.indexOf("reply_activity") >= 0) {
+          return uriActivity.split("/")[3];          
+        }             
+      }    
+    }
+    return null;
+  }
+  
+  /**
+   * Check the request param of url to verify if need focus to comment box
+   * @return true if need focus to comment box
+   */
+  public static boolean isFocusCommentBox() {
+    return ("1").equals(getValueFromRequestParam("comment"));
+  }
+  
+  /**
+   * Check the request param of url to verify if need expand all likers
+   * @return true if need expand all likers
+   */
+  public static boolean isExpandLikers() {
+    return ("1").equals(getValueFromRequestParam("likes"));
+  }
+  
+  public static String getValueFromRequestParam(String param) {
+    PortalRequestContext request = Util.getPortalRequestContext();
+    return request.getRequest().getParameter(param);
+  }
+  
+  /**
+   * Gets the header parameter
+   * @param param
+   * @return
+   */
+  public static String getHeader(String param) {
+    PortalRequestContext request = Util.getPortalRequestContext();
+    return request.getRequest().getHeader(param);
+  }
+  
+  /**
+   * Gets query value from Referer URI in request header.
+   * @param param
+   * @return
+   */
+  public static String getValueFromRefererURI(String param) {
+    String refererURI = getHeader("referer");
+    String value = null;
+    if (refererURI != null) {
+     
+      int index = refererURI.indexOf("?");
+      if (index != -1) {
+        String query = refererURI.substring(index + 1);
+        Map<String, String[]> map = HttpUtils.parseQueryString(query);
+        value = map.containsKey(param) ? map.get(param)[0] : null;
+        return value;
+      }
+    }
+    return value;
+  }
+  
+  /**
+   * Display the feedback message inline instead of show on popup
+   */
+  public static void displayFeedbackMessageInline(String parentId) {
+    try {
+      WebuiRequestContext context = WebuiRequestContext.getCurrentInstance();
+      ResourceBundle res = context.getApplicationResourceBundle();
+      PortletRequestContext pContext = (PortletRequestContext) context;
+      JavascriptManager jm = pContext.getJavascriptManager();
+      String feedbackMessageType = getValueFromRequestParam("feedbackMessage");
+      if (feedbackMessageType != null) {
+        String message = res.getString("Notification.feedback.message." + feedbackMessageType);
+        String userName = getValueFromRequestParam("userName");
+        String spaceId = getValueFromRequestParam("spaceId");
+        if (userName != null)
+          message = message.replace("{0}", getUserIdentity(userName, false).getProfile().getFullName());
+        if (spaceId != null)
+          message = message.replace("{1}", getSpaceService().getSpaceById(spaceId).getDisplayName());
+        message = message.replace("'", "${simpleQuote}");
+        jm.require("SHARED/socialUtil", "socialUtil").addScripts("socialUtil.feedbackMessageInline('" + parentId + "','" + message + "');");
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to init the feedback message");
+    }
   }
   
   /**
@@ -574,6 +738,7 @@ public class Utils {
     StringBuilder script = new StringBuilder("setTimeout(function() {")
       .append("jq('.LeftNavigationTDContainer:first').css('height', 'auto');")
       .append("jq('#UIUserActivityStreamPortlet').css('height', 'auto');")
+      .append("jq('#UIProfile').css('height', 'auto');")
       .append("platformLeftNavigation.resize();")
       .append("}, 200);");
     
@@ -595,7 +760,20 @@ public class Utils {
       .addScripts("profile.initUserProfilePopup('" + uiActivityId + "', null);");
   }
   
-  private static Space getSpaceByContext() {
+  /**
+   * Clear user profile popup.
+   * 
+   * @param uiActivityId Id of activity component.
+   * @since 4.1.x
+   */
+  public static void clearUserProfilePopup() {
+    PortletRequestContext pContext = (PortletRequestContext) WebuiRequestContext.getCurrentInstance();
+    JavascriptManager jm = pContext.getJavascriptManager();
+    jm.require("SHARED/social-ui-profile", "profile")
+      .addScripts("profile.clearUserProfilePopup();");
+  }
+  
+  public static Space getSpaceByContext() {
     //
     SpaceService spaceService = (SpaceService) ExoContainerContext.getCurrentContainer().getComponentInstanceOfType(SpaceService.class);
     PortalRequestContext pcontext = Util.getPortalRequestContext();
@@ -617,5 +795,90 @@ public class Utils {
      
     
     return space;
+  }
+  
+  /**
+   * Clears cached user data on user profile popup.
+   * 
+   * @since 4.1.x
+   */
+  public static void clearCacheOnUserPopup() {
+    WebuiRequestContext reqContext = WebuiRequestContext.getCurrentInstance();
+    JavascriptManager jm = reqContext.getJavascriptManager();
+    jm.require("SHARED/jquery", "jq")
+      .addScripts("(function($) { $('#socialUsersData').data('CacheSearch', {}); })(jq);");
+  }
+  
+  /**
+   * Get Resource bundle. If failure, log it in developer mode
+   * @param msgKey key to get resource bundle
+   * @return Localized value for msgKey. null if value is not found 
+   */
+  public static String appRes (String msgKey) {
+    WebuiRequestContext context = WebuiRequestContext.getCurrentInstance();
+    try {
+      return context.getApplicationResourceBundle().getString(msgKey);
+    } catch (MissingResourceException ex) {
+      if (PropertyManager.isDevelopping()) {
+        LOG.warn("Can not find resource bundle for key : " + msgKey);
+      }
+      return null;
+    }    
+  }
+  
+  /**
+   * Gets resolved application label by input user node.
+   * 
+   * @param userNode user node
+   * @return label value of input user node. null be returned in case of node has no label. 
+   * @since 4.1-RC1
+   */
+  
+  public static String getResolvedAppLabel (UserNode userNode) {
+    ExoContainer container = ExoContainerContext.getCurrentContainer();
+    UserPortalConfigService userPortalConfigService = (UserPortalConfigService)
+                                                  container.getComponentInstanceOfType(UserPortalConfigService.class);
+    if (userNode ==  null) {
+      return null;
+    }
+    
+    String id = userNode.getId();
+    String nodeLabel = userNode.getLabel();
+    
+    if (nodeLabel != null) {
+      UserNavigation navigation = userNode.getNavigation();
+      ResourceBundle bundle = navigation.getBundle();
+      return ExpressionUtil.getExpressionValue(bundle, nodeLabel);
+    } else if (id != null) {
+      Locale userLocale =  Util.getPortalRequestContext().getLocale();
+      Locale portalLocale = SpaceUtils.getUserPortal().getLocale();
+      DescriptionService descriptionService = userPortalConfigService.getDescriptionService();
+      Described.State description = descriptionService.resolveDescription(id, portalLocale, userLocale);
+      if (description != null) {
+        return description.getName();
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Initializes confirmation popup.
+   *  
+   * @param componentId Target component.
+   * @param confirmationMsg Confirmation message.
+   * @throws Exception
+   */
+  public static void initConfirmationPopup(String componentId) throws Exception {
+    WebuiRequestContext context = WebuiRequestContext.getCurrentInstance();
+    ResourceBundle res = context.getApplicationResourceBundle();
+    JSONObject object = new JSONObject();
+    object.put("componentId", componentId);
+    object.put("Caption", res.getString("Confirmation.label.Caption"));
+    object.put("OK", res.getString("Confirmation.label.OK"));
+    object.put("Cancel", res.getString("Confirmation.label.Cancel"));
+    
+    context.getJavascriptManager().getRequireJS().require("SHARED/socialUtil", "socialUtil")
+           .addScripts("socialUtil.applyConfirmPopup(" + object.toString() + ");");
   }
 }

@@ -16,10 +16,6 @@
  */
 package org.exoplatform.social.core.manager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.social.core.identity.ConnectionFilterListAccess;
@@ -33,6 +29,8 @@ import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.relationship.model.Relationship.Type;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.RelationshipStorageException;
+
+import java.util.*;
 
 /**
  * The Class RelationshipManager implements RelationshipManager without caching.
@@ -476,7 +474,7 @@ public class RelationshipManagerImpl implements RelationshipManager {
       //    relationship.setStatus(Relationship.Type.IGNORED);
       //  save(relationship);
       // TODO: now just remove, implement later
-      this.delete(relationship);
+      storage.removeRelationship(relationship);
       lifeCycle.relationshipDenied(this, relationship);
     }
   }
@@ -525,7 +523,7 @@ public class RelationshipManagerImpl implements RelationshipManager {
       relationship = new Relationship(invitingIdentity, invitedIdentity);
       relationship.setStatus(Type.PENDING);
       this.update(relationship);
-      //lifeCycle.relationshipRequested(this, relationship);
+      lifeCycle.relationshipRequested(this, relationship);
     }
     return relationship;
   }
@@ -557,5 +555,40 @@ public class RelationshipManagerImpl implements RelationshipManager {
     
     return new ConnectionFilterListAccess(this.storage, existingIdentity, profileFilter,
                                           ConnectionFilterListAccess.Type.PROFILE_FILTER_OUTGOING);
+  }
+
+  public Map<Identity, Integer> getSuggestions(Identity identity, int maxConnections, 
+                                                int maxConnectionsToLoad, int maxSuggestions) {
+    return storage.getSuggestions(identity, maxConnections, maxConnectionsToLoad, 
+                                                                maxSuggestions);
+  }
+
+  public Map<Identity, Integer> getSuggestions(Identity identity, int offset, int limit) {
+    Map<Identity, Integer> result = storage.getSuggestions(identity, -1, -1, offset + limit);
+    if (result != null && !result.isEmpty()) {
+      if (offset > 0) {
+        result = new LinkedHashMap<Identity, Integer>(result);
+        int o = 0;
+        for (Iterator<Map.Entry<Identity, Integer>> it = result.entrySet().iterator(); it.hasNext() && o < offset; o++) {
+          it.next();
+          it.remove();
+        }
+      }
+      if (result.size() > limit) {
+        result = new LinkedHashMap<Identity, Integer>(result);
+        int i = 0;
+        for (Iterator<Map.Entry<Identity, Integer>> it = result.entrySet().iterator(); it.hasNext(); i++) {
+          it.next();
+          if (i >= limit)
+            it.remove();
+        }
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public List<Identity> getLastConnections(Identity identity, int limit) {
+    return storage.getLastConnections(identity, limit);
   }
 }

@@ -17,11 +17,13 @@
 package org.exoplatform.social.webui;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Map;
 
+import org.exoplatform.download.DownloadResource;
 import org.exoplatform.download.DownloadService;
-import org.exoplatform.download.InputStreamDownloadResource;
-import org.exoplatform.portal.webui.container.UIContainer;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.image.ImageUtils;
 import org.exoplatform.social.core.model.AvatarAttachment;
@@ -30,13 +32,14 @@ import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.webui.space.UISpaceInfo;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
-import org.exoplatform.webui.core.UIComponent;
+import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.core.UIPopupWindow;
+import org.exoplatform.webui.core.UIPortletApplication;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
 
 @ComponentConfig(
-  template = "classpath:groovy/social/webui/UIAvatarUploadContent.gtmpl",
+  template = "war:/groovy/social/webui/UIAvatarUploadContent.gtmpl",
   events = {
     @EventConfig(listeners = UIAvatarUploadContent.SaveActionListener.class),
     @EventConfig(listeners = UIAvatarUploadContent.CancelActionListener.class)
@@ -114,28 +117,33 @@ public class UIAvatarUploadContent extends UIContainer {
       saveAvatar(uiAvatarUploadContent);
       UIPopupWindow uiPopup = uiAvatarUploadContent.getParent();
       uiPopup.setShow(false);
-      Utils.updateWorkingWorkSpace();
+      uiPopup.setUIComponent(null);
+      uiPopup.setRendered(false);
+      UISpaceInfo spaceInfo = uiPopup.getAncestorOfType(UISpaceInfo.class);
+      if(spaceInfo == null) {
+        UIContainer container = uiPopup.getAncestorOfType(UIPortletApplication.class).findComponentById("Avatar");
+        if (container != null) {
+          event.getRequestContext().addUIComponentToUpdateByAjax(container);
+        }
+        event.getRequestContext().addUIComponentToUpdateByAjax(uiPopup.getParent());
+      } else {
+        Utils.updateWorkingWorkSpace();
+      }
     }
 
     private void saveAvatar(UIAvatarUploadContent uiAvatarUploadContent) throws Exception {
-      UIComponent parent =uiAvatarUploadContent.getParent();
-      while (parent != null) {
-         if (UISpaceInfo.class.isInstance(parent)) {
-           UISpaceInfo uiSpaceInfo = ((UISpaceInfo)parent);
-           SpaceService spaceService = uiSpaceInfo.getSpaceService();
-           String id = uiSpaceInfo.getUIStringInput("id").getValue();
-           Space space = spaceService.getSpaceById(id);
-           if (space != null) {
-             uiSpaceInfo.saveAvatar(uiAvatarUploadContent, space);
-             return;
-           }
-         }
-         parent = parent.getParent();
+      UISpaceInfo spaceInfo = uiAvatarUploadContent.getAncestorOfType(UISpaceInfo.class);
+      if(spaceInfo != null) {
+        SpaceService spaceService = spaceInfo.getSpaceService();
+        String id = spaceInfo.getUIStringInput(UISpaceInfo.SPACE_ID).getValue();
+        Space space = spaceService.getSpaceById(id);
+        if (space != null) {
+          spaceInfo.saveAvatar(uiAvatarUploadContent, space);
+        }
+      } else {
+        // Save user avatar
+        uiAvatarUploadContent.saveUserAvatar(uiAvatarUploadContent);
       }
-      
-      // Save user avatar
-      uiAvatarUploadContent.saveUserAvatar(uiAvatarUploadContent);
-      return;
     }
   }
 
@@ -151,6 +159,7 @@ public class UIAvatarUploadContent extends UIContainer {
     
     Profile p = Utils.getOwnerIdentity().getProfile();
     p.setProperty(Profile.AVATAR, attacthment);
+    p.setListUpdateTypes(Arrays.asList(Profile.UpdateType.AVATAR));
     Map<String, Object> props = p.getProperties();
 
     // Removes avatar url and resized avatar
@@ -192,4 +201,21 @@ public class UIAvatarUploadContent extends UIContainer {
     downloadResource.setDownloadName(avatarAttachment.getFileName());
     imageSource = downloadService.getDownloadLink(downloadService.addDownloadResource(downloadResource));
   }
+  
+  private class InputStreamDownloadResource extends DownloadResource {
+    private InputStream is_;
+    public InputStreamDownloadResource(ByteArrayInputStream byteImage, String resourceMimeType) {
+      super(resourceMimeType);
+      this.is_ = byteImage;
+    }
+    public InputStreamDownloadResource(String resourceMimeType) {
+      super(resourceMimeType);
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+      return is_;
+    }
+  }
+  
 }

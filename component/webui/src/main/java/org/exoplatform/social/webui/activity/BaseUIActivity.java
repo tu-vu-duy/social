@@ -17,19 +17,19 @@
 package org.exoplatform.social.webui.activity;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.common.RealtimeListAccess;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
+import org.exoplatform.social.core.application.SpaceActivityPublisher;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -224,6 +224,9 @@ public class BaseUIActivity extends UIForm {
    */
   public List<ExoSocialActivity> getComments() {
     int commentsSize = activityCommentsListAccess.getSize();
+    if (commentsSize == 0)
+      return new ArrayList<ExoSocialActivity>();
+    //
     List<ExoSocialActivity> comments = new ArrayList<ExoSocialActivity>();
     if (commentListStatus == CommentStatus.ALL) {
       if (currentLoadIndex == 0) {
@@ -249,10 +252,25 @@ public class BaseUIActivity extends UIForm {
     return getI18N(comments);
   }
 
+  /**
+   * Don't use this method what you want to get the comments's size.
+   * You could use the new method for this stuff: getAllCommentSize() method
+   * 
+   * @return
+   */
+  @Deprecated
   public List<ExoSocialActivity> getAllComments() {
     return activityCommentsListAccess.loadAsList(0, activityCommentsListAccess.getSize());
   }
 
+  /**
+   * Gets number of comments of the specified activity
+   * @return
+   */
+  public int getAllCommentSize() {
+    return activityCommentsListAccess.getSize();
+  }
+  
   public String[] getIdentityLikes() {
     return identityLikes;
   }
@@ -263,10 +281,7 @@ public class BaseUIActivity extends UIForm {
    * @throws Exception
    */
   public String[] getDisplayedIdentityLikes() throws Exception {
-    List<String> likes = Arrays.asList(identityLikes);
-    Collections.reverse(likes);
-    identityLikes = (String[])likes.toArray();
-    
+    ArrayUtils.reverse(identityLikes);
     return identityLikes;
   }
 
@@ -402,7 +417,7 @@ public class BaseUIActivity extends UIForm {
 
   protected void saveComment(String remoteUser, String message) throws Exception {
     ExoSocialActivity comment = new ExoSocialActivityImpl(Utils.getViewerIdentity().getId(),
-            SpaceService.SPACES_APP_ID, message, null);
+                                                          SpaceActivityPublisher.SPACE_APP_ID, message, null);
     Utils.getActivityManager().saveComment(getActivity(), comment);
     activityCommentsListAccess = Utils.getActivityManager().getCommentsWithListAccess(getActivity());
     comments = activityCommentsListAccess.loadAsList(0, DEFAULT_LIMIT);
@@ -410,7 +425,7 @@ public class BaseUIActivity extends UIForm {
     setCommentListStatus(CommentStatus.ALL);
   }
 
-  protected void setLike(boolean isLiked, String remoteUser) throws Exception {
+  public void setLike(boolean isLiked) throws Exception {
     Identity viewerIdentity = Utils.getViewerIdentity();
     activity.setBody(null);
     activity.setTitle(null);
@@ -448,6 +463,22 @@ public class BaseUIActivity extends UIForm {
     comments = activityCommentsListAccess.loadAsList(0, DEFAULT_LIMIT);
     comments = getI18N(comments);
     identityLikes = activity.getLikeIdentityIds();
+    
+    //init single activity : focus to comment's box or expand all comments
+    initSingleActivity();
+  }
+  
+  private void initSingleActivity() {
+    UIActivitiesContainer uiActivitiesContainer = getAncestorOfType(UIActivitiesContainer.class);
+    PostContext postContext = uiActivitiesContainer.getPostContext();
+    if (postContext == PostContext.SINGLE) {
+      if (! Utils.isExpandLikers() && ! Utils.isFocusCommentBox()) {
+        // expand all comments
+        setCommentListStatus(CommentStatus.ALL);
+      } else {
+        setCommentListStatus(CommentStatus.LATEST);
+      }
+    }
   }
   
   public boolean isUserActivity() {
@@ -552,9 +583,21 @@ public class BaseUIActivity extends UIForm {
       if (Utils.getViewerIdentity().getId().equals(activityUserId)) {
         return true;
       }
+      Space space = null;
+      SpaceService spaceService = getApplicationComponent(SpaceService.class);
+      
       if (postContext == PostContext.SPACE) {
-        Space space = uiActivitiesContainer.getSpace();
-        SpaceService spaceService = getApplicationComponent(SpaceService.class);
+        space = uiActivitiesContainer.getSpace();
+        spaceService = getApplicationComponent(SpaceService.class);
+      } else {
+        Identity identityStreamOwner = Utils.getIdentityManager().getOrCreateIdentity(SpaceIdentityProvider.NAME, 
+            this.getActivity().getStreamOwner(), false);
+        if ( identityStreamOwner != null ) {
+          space = spaceService.getSpaceByPrettyName(identityStreamOwner.getRemoteId());        
+        }
+      }
+      
+      if (space != null) {
         return spaceService.isManager(space, Utils.getOwnerRemoteId());
       }
     } catch (Exception e) {
@@ -575,10 +618,21 @@ public class BaseUIActivity extends UIForm {
     
     // If an activity of space then set creator information
     if ( SpaceIdentityProvider.NAME.equals(ownerIdentity.getProviderId()) ) {
+      String spaceCreator = activity.getTemplateParams().get(Space.CREATOR);
+      
+      if (spaceCreator != null) {
+        return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME, spaceCreator, false);  
+      }
+      
       SpaceService spaceService = getApplicationComponent(SpaceService.class);
       Space space = spaceService.getSpaceByPrettyName(ownerIdentity.getRemoteId()); 
-      String[] managers = space.getManagers();
-      return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME,managers[0], false);
+      
+      if (space == null) {
+        return ownerIdentity;
+      } else {
+        String[] managers = space.getManagers();
+        return Utils.getIdentityManager().getOrCreateIdentity(OrganizationIdentityProvider.NAME,managers[0], false);
+      }
     }
     
     return null;
@@ -591,9 +645,7 @@ public class BaseUIActivity extends UIForm {
    * @since 1.2.2
    */
   protected boolean isSpaceStreamOwner() {
-    Identity identityStreamOwner = Utils.getIdentityManager().getOrCreateIdentity(SpaceIdentityProvider.NAME, 
-                                                                                  this.getActivity().getStreamOwner(), false);
-    return (identityStreamOwner != null);
+    return this.getActivity().getActivityStream().getType().name().equalsIgnoreCase(SpaceIdentityProvider.NAME);
   }
   
   /**
@@ -614,12 +666,12 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       uiActivity.setAllLoaded(true);
       event.getRequestContext().addUIComponentToUpdateByAjax(uiActivity);
       
       JavascriptManager jm = event.getRequestContext().getJavascriptManager();
-      jm.require("SHARED/social-ui-activity", "activity").addScripts("activity.loadLikes();");
+      jm.require("SHARED/social-ui-activity", "activity").addScripts("activity.loadLikes('#ContextBox" + activityId + "');");
       
       Utils.initUserProfilePopup(uiActivity.getId());
       Utils.resizeHomePage();
@@ -634,11 +686,14 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       WebuiRequestContext requestContext = event.getRequestContext();
       String isLikedStr = requestContext.getRequestParameter(OBJECTID);
-      boolean isLiked = Boolean.parseBoolean(isLikedStr);
-      uiActivity.setLike(isLiked, requestContext.getRemoteUser());
+      uiActivity.setLike(Boolean.parseBoolean(isLikedStr));
+      //
+      JavascriptManager jm = requestContext.getJavascriptManager();
+      jm.require("SHARED/social-ui-activity", "activity").addScripts("activity.displayLike('#ContextBox" + activityId + "');");      
+      
       requestContext.addUIComponentToUpdateByAjax(uiActivity);
       
       Utils.initUserProfilePopup(uiActivity.getId());
@@ -654,7 +709,7 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       String status = event.getRequestContext().getRequestParameter(OBJECTID);
       CommentStatus commentListStatus = null;
       if (status.equals(CommentStatus.LATEST.getStatus())) {
@@ -672,17 +727,17 @@ public class BaseUIActivity extends UIForm {
       
       //
       String inputContainerId = "InputContainer" + activityId;
-      StringBuffer script = new StringBuffer("$(function() {");
+      StringBuffer script = new StringBuffer("(function($) {");
       script.append("var inputContainer = $('#").append(inputContainerId).append("');");
       script.append("inputContainer.addClass('inputContainerShow').show();");
-      script.append("});");
+      script.append("})(jq);");
       
       JavascriptManager jm = event.getRequestContext().getJavascriptManager();
       
       Utils.initUserProfilePopup(uiActivity.getId());
       Utils.resizeHomePage();
       
-      jm.addJavascript(script.toString());
+      jm.require("SHARED/jquery", "jq").addScripts(script.toString());
     }
   }
 
@@ -709,7 +764,7 @@ public class BaseUIActivity extends UIForm {
       if (uiActivity.isNoLongerExisting(activityId, event)) {
         return;
       }
-      uiActivity.refresh();
+      //uiActivity.refresh();
       WebuiRequestContext requestContext = event.getRequestContext();
       UIFormTextAreaInput uiFormComment = uiActivity.getChild(UIFormTextAreaInput.class);
       String message = uiFormComment.getValue();
@@ -750,10 +805,10 @@ public class BaseUIActivity extends UIForm {
       if (activitiesContainer.getActivityList().size() == 0) {
         event.getRequestContext().addUIComponentToUpdateByAjax(activitiesContainer.getParent().getParent());
       } else {
-        event.getRequestContext().addUIComponentToUpdateByAjax(activitiesContainer);
+        event.getRequestContext().addUIComponentToUpdateByAjax(activitiesContainer.getParent());
       }
       
-      Utils.initUserProfilePopup(uiActivity.getId());
+      Utils.clearUserProfilePopup();
       Utils.resizeHomePage();
     }
 
@@ -765,13 +820,15 @@ public class BaseUIActivity extends UIForm {
     public void execute(Event<BaseUIActivity> event) throws Exception {
       BaseUIActivity uiActivity = event.getSource();
       String activityId = uiActivity.getActivity().getId();
-      if (uiActivity.isNoLongerExisting(activityId, event)) {
+      String commentId = event.getRequestContext().getRequestParameter(OBJECTID);
+      if (uiActivity.isNoLongerExisting(activityId, event) || 
+          uiActivity.isNoLongerExisting(commentId, event)) {
         return;
       }
       WebuiRequestContext requestContext = event.getRequestContext();
       Utils.getActivityManager().deleteComment(uiActivity.getActivity().getId(),
                                                requestContext.getRequestParameter(OBJECTID));
-      uiActivity.refresh();
+      //uiActivity.refresh();
       requestContext.addUIComponentToUpdateByAjax(uiActivity);
       
       Utils.initUserProfilePopup(uiActivity.getId());
@@ -799,6 +856,22 @@ public class BaseUIActivity extends UIForm {
       return true;
     }
     return false;
+  }
+  
+  public boolean isDeletedSpace(String streamOwner) {
+    //only check when the activity belongs to the space stream owner
+    if (this.activity.getActivityStream().getType().toString().equals(SpaceIdentityProvider.NAME)) {
+      return CommonsUtils.getService(SpaceService.class).getSpaceByPrettyName(streamOwner) == null;
+    } else {
+      return false;
+    }
+  }
+  
+  /**
+   * @return the identity of the current user who is commenting on the activity
+   */
+  public Identity getCommenterIdentity() {
+    return Utils.getViewerIdentity();
   }
   
   /**

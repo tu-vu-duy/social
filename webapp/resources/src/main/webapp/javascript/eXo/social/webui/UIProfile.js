@@ -23,12 +23,14 @@ var UIProfile = {
   },
   initUserProfilePopup : function(uicomponentId, labels) {
     //
-    labels = labels || UIProfile.labels;
-    UIProfile.labels = labels;
+    UIProfile.labels = settings = $.extend(true, {}, UIProfile.labels, labels);
+    $.each(UIProfile.labels, function(key) {
+      UIProfile.labels[key] =  window.decodeURIComponent(UIProfile.labels[key]);
+    });
     
     // User Profile Popup initialize
-	  var portal = eXo.social.portal;
-	  var restUrl = 'http://' + window.location.host + portal.context + '/' + portal.rest + '/social/people' + '/getPeopleInfo/{0}.json';
+	var portal = eXo.social.portal;
+	var restUrl = '//' + window.location.host + portal.context + '/' + portal.rest + '/social/people' + '/getPeopleInfo/{0}.json';
     
     var container = $('#' + uicomponentId).closest('.PORTLET-FRAGMENT');
     var userLinks = $(container).find('a:[href*="/profile/"]');
@@ -38,12 +40,19 @@ var UIProfile = {
         
         $(el).userPopup({
           restURL: restUrl,
-          labels: labels,
+          labels: UIProfile.labels,
           content: false,
           defaultPosition: "left",
           keepAlive: true,
           maxWidth: "240px"
         });
+    });
+  },
+  clearUserProfilePopup : function() {
+    $('div#socialUsersData').stop().animate({
+        'cursor':'none'
+    }, 1000, function () {
+        $(this).data("CacheSearch", {});
     });
   },
   addLabelToCheckBoxes: function(uicomponentId, label) {

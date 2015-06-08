@@ -231,7 +231,7 @@ public class ActiviyBuilderWhereTest extends TestCase {
   
   public void testUserSpaceOwner() throws Exception {
     ActivityFilter filter = ActivityFilter.space();
-    ActivityBuilderWhere where = ActivityBuilderWhere.simple();
+    ActivityBuilderWhere where = ActivityBuilderWhere.userSpaces();
 
     Identity spaceIdentity = new Identity("space_new1");
     spaceIdentity.setRemoteId("space_new1");
@@ -252,7 +252,7 @@ public class ActiviyBuilderWhereTest extends TestCase {
   
   public void testUserSpaceNewerOwner() throws Exception {
     ActivityFilter filter = ActivityFilter.spaceNewer();
-    ActivityBuilderWhere where = ActivityBuilderWhere.simple();
+    ActivityBuilderWhere where = ActivityBuilderWhere.userSpaces();
 
     long accessPoint = Calendar.getInstance().getTime().getTime();
     
@@ -274,7 +274,7 @@ public class ActiviyBuilderWhereTest extends TestCase {
   
   public void testUserSpaceOlderOwner() throws Exception {
     ActivityFilter filter = ActivityFilter.spaceOlder();
-    ActivityBuilderWhere where = ActivityBuilderWhere.simple();
+    ActivityBuilderWhere where = ActivityBuilderWhere.userSpaces();
 
     long accessPoint = Calendar.getInstance().getTime().getTime();
     

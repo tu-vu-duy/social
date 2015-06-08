@@ -16,16 +16,19 @@
  */
 package org.exoplatform.social.core.listeners;
 
+import org.exoplatform.commons.utils.CommonsUtils;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.config.UserACL;
 import org.exoplatform.services.organization.Membership;
 import org.exoplatform.services.organization.MembershipEventListener;
+import org.exoplatform.services.organization.MembershipTypeHandler;
+import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
-import org.exoplatform.social.core.storage.impl.StorageUtils;
 
 /**
  * SocialMembershipListenerImpl is registered to OrganizationService to handle membership operation associated
@@ -45,13 +48,21 @@ public class SocialMembershipListenerImpl extends MembershipEventListener {
   @Override
   public void postDelete(Membership m) throws Exception {
     if (m.getGroupId().startsWith(SpaceUtils.SPACE_GROUP)) {
-      ExoContainer container = ExoContainerContext.getCurrentContainer();
-      UserACL acl = (UserACL) container.getComponentInstanceOfType(UserACL.class);
+      OrganizationService orgService = CommonsUtils.getService(OrganizationService.class);
+      
+      //check if user has the membership type "*", if yes, no need to remove this membership
+      Membership membership = orgService.getMembershipHandler().
+          findMembershipByUserGroupAndType(m.getUserName(), m.getGroupId(), MembershipTypeHandler.ANY_MEMBERSHIP_TYPE);
+      if (membership != null) {
+        return;
+      }
+      UserACL acl =  CommonsUtils.getService(UserACL.class);
       
       //only handles these memberships have types likes 'manager' 
       //and 'member', except 'validator', '*'...so on.
-      SpaceService spaceService = (SpaceService) container.getComponentInstanceOfType(SpaceService.class);
+      SpaceService spaceService = CommonsUtils.getService(SpaceService.class);
       Space space = spaceService.getSpaceByGroupId(m.getGroupId());
+      space.setEditor(ConversationState.getCurrent().getIdentity().getUserId());
       if (acl.getAdminMSType().equalsIgnoreCase(m.getMembershipType())) {
         spaceService.setManager(space, m.getUserName(), false);
         SpaceUtils.refreshNavigation();
@@ -59,6 +70,8 @@ public class SocialMembershipListenerImpl extends MembershipEventListener {
         spaceService.removeMember(space, m.getUserName());
         spaceService.setManager(space, m.getUserName(), false);
         SpaceUtils.refreshNavigation();
+      } else if (MembershipTypeHandler.ANY_MEMBERSHIP_TYPE.equalsIgnoreCase(m.getMembershipType())) {
+        clearIdentityCaching();
       }
     } else if (m.getGroupId().startsWith(SpaceUtils.PLATFORM_USERS_GROUP)) {
       clearIdentityCaching();
@@ -78,6 +91,7 @@ public class SocialMembershipListenerImpl extends MembershipEventListener {
       Space space = spaceService.getSpaceByGroupId(m.getGroupId());
       //TODO A case to confirm: will we create a new space here when a new group is created via organization portlet
       if (space != null) {
+        space.setEditor(ConversationState.getCurrent().getIdentity().getUserId());
         String userName = m.getUserName();
         if (acl.getAdminMSType().equalsIgnoreCase(m.getMembershipType())) {
           if (spaceService.isManager(space, userName)) {
@@ -94,14 +108,16 @@ public class SocialMembershipListenerImpl extends MembershipEventListener {
             return;
           }
           spaceService.addMember(space, userName);
+        } else if (MembershipTypeHandler.ANY_MEMBERSHIP_TYPE.equalsIgnoreCase(m.getMembershipType())) {
+          clearIdentityCaching();
         }
+        
         //Refresh GroupNavigation
         SpaceUtils.refreshNavigation();
       }
 
     } else if (m.getGroupId().startsWith(SpaceUtils.PLATFORM_USERS_GROUP)) {
       clearIdentityCaching();
-      StorageUtils.clearUsersPlatformGroup();
     }
   }
   

@@ -40,9 +40,10 @@ import org.apache.xerces.xni.parser.XMLParserConfiguration;
 import org.cyberneko.html.HTMLConfiguration;
 import org.cyberneko.html.filters.DefaultFilter;
 import org.cyberneko.html.filters.ElementRemover;
+import org.exoplatform.commons.embedder.EmbedderFactory;
+import org.exoplatform.commons.embedder.ExoMedia;
 import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.social.common.embedder.EmbedderFactory;
-import org.exoplatform.social.common.embedder.ExoSocialMedia;
+import org.exoplatform.services.log.Log;
 
 /**
  * LinkShare - gets preview information of a link including: 
@@ -110,6 +111,8 @@ public class LinkShare extends DefaultFilter {
   private String mediaHeight;
   private String mediaWidth;
   
+  private static final Log LOG = ExoLogger.getLogger(LinkShare.class);
+  
   private static final String HTTP_PROTOCOL = "http://";
   private static final String HTTPS_PROTOCOL = "https://";
   
@@ -127,7 +130,7 @@ public class LinkShare extends DefaultFilter {
   private String   description;
   private String imageSrc;
   private List<String> images;
-  private ExoSocialMedia mediaObject;
+  private ExoMedia mediaObject;
   //Collections of description with key as lang
   private HashMap<String, String> descriptions;
   //holds temporary string values from characters() method
@@ -291,7 +294,7 @@ public class LinkShare extends DefaultFilter {
    * get mediaObject
    * @return
    */
-  public ExoSocialMedia getMediaObject() {
+  public ExoMedia getMediaObject() {
     return mediaObject;
   }
   
@@ -324,7 +327,7 @@ public class LinkShare extends DefaultFilter {
     parser.setProperty("http://cyberneko.org/html/properties/default-encoding", "UTF-8");
     parser.setProperty("http://cyberneko.org/html/properties/filters", filter);
     parser.setDocumentHandler(this);
-    XMLInputSource source = new XMLInputSource(null, link, null);
+    XMLInputSource source = new XMLInputSource(null, Util.getDecodeQueryURL(link), null);
     source.setEncoding(encoding);
     try {
       parser.parse(source);
@@ -334,9 +337,9 @@ public class LinkShare extends DefaultFilter {
     } catch (IOException e) {
       // Process as normal behavior in case the link is in the valid form
       // but have been blocked or some other same reasons.
-      this.title = link;
+      this.title = this.link;
     } catch (Exception e) {
-      this.title = link;
+      this.title = this.link;
     }
   }
   
@@ -371,7 +374,7 @@ public class LinkShare extends DefaultFilter {
     linkShare.link = link;
     LinkShare.lang = lang;
     
-    linkShare.mediaObject = EmbedderFactory.getInstance(link).getExoSocialMedia();  
+    linkShare.mediaObject = EmbedderFactory.getInstance(link).getExoMedia(); 
     
     // if there is no media object, processes link to get page metadata
     if(linkShare.mediaObject == null) {
@@ -578,12 +581,12 @@ public class LinkShare extends DefaultFilter {
    * @return absolute link
    */
   private String getAbsLink(String link) {
-    if (link.startsWith("http://")) return link;
+    if (link.startsWith("http://") || link.startsWith("https://")) return link;
     URL url = null;
     try {
       url = new URL(this.link);
     } catch (MalformedURLException e) {
-      //Do nothing, this exception will never occur here
+      LOG.debug("MalformedURLException : Could not initialize url from link.");
     }
     String protocol = url.getProtocol();
     String host = url.getHost();

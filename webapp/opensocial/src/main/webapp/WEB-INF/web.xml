@@ -29,7 +29,7 @@
   <context-param>
     <param-name>guice-modules</param-name>
     <param-value>
-      org.apache.shindig.common.PropertiesModule:
+      org.exoplatform.portal.gadget.core.ExoPropertiesModule:
       org.exoplatform.social.opensocial.ExoSocialApiGuiceModule:
       org.apache.shindig.gadgets.DefaultGuiceModule:
       org.exoplatform.portal.gadget.core.ExoOAuthModule:
@@ -85,4 +85,6 @@
     <servlet-name>socialJsonRpcServlet</servlet-name>
     <url-pattern>/rpc/*</url-pattern>
   </servlet-mapping>
+  
+  <absolute-ordering/>
 </web-app>

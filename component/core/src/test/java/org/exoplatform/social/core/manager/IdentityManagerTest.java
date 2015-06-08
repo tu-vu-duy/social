@@ -17,16 +17,16 @@
 package org.exoplatform.social.core.manager;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.exoplatform.commons.utils.ListAccess;
-import org.exoplatform.commons.utils.PageList;
-import org.exoplatform.container.ExoContainerContext;
-import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.services.log.Log;
-import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
+import org.exoplatform.services.organization.UserHandler;
+import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.IdentityRegistry;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
 import org.exoplatform.social.core.identity.model.Identity;
@@ -34,8 +34,8 @@ import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.Application;
 import org.exoplatform.social.core.identity.provider.FakeIdentityProvider;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
+import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.profile.ProfileFilter;
-import org.exoplatform.social.core.space.SpaceException;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.impl.DefaultSpaceApplicationHandler;
 import org.exoplatform.social.core.space.model.Space;
@@ -55,16 +55,16 @@ import org.junit.runners.MethodSorters;
 // * The order of tests execution changed in Junit 4.11 (https://github.com/KentBeck/junit/blob/master/doc/ReleaseNotes4.11.md)
 @FixMethodOrder(MethodSorters.JVM)
 public class IdentityManagerTest extends AbstractCoreTest {
-  private final Log       LOG = ExoLogger.getLogger(IdentityManagerTest.class);
 
   private IdentityManager identityManager;
 
-  
+  private List<Space> tearDownSpaceList;
   private List<Identity>  tearDownIdentityList;
 
   private ActivityManager activityManager;
   private SpaceService spaceService;
-
+  private UserHandler userHandler;
+  
   public void setUp() throws Exception {
     super.setUp();
     identityManager = (IdentityManager) getContainer().getComponentInstanceOfType(IdentityManager.class);
@@ -76,12 +76,24 @@ public class IdentityManagerTest extends AbstractCoreTest {
     activityManager = (ActivityManager) getContainer().getComponentInstanceOfType(ActivityManager.class);
     assertNotNull(activityManager);
 
+    userHandler = SpaceUtils.getOrganizationService().getUserHandler();
+    
     tearDownIdentityList = new ArrayList<Identity>();
+    tearDownSpaceList = new ArrayList<Space>();
+    org.exoplatform.services.security.Identity identity = getService(IdentityRegistry.class).getIdentity("root");
+    ConversationState.setCurrent(new ConversationState(identity));
   }
 
   public void tearDown() throws Exception {
     for (Identity identity : tearDownIdentityList) {
       identityManager.deleteIdentity(identity);
+    }
+    for (Space space : tearDownSpaceList) {
+      Identity spaceIdentity = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, space.getPrettyName(), false);
+      if (spaceIdentity != null) {
+        identityManager.deleteIdentity(spaceIdentity);
+      }
+      spaceService.deleteSpace(space);
     }
     super.tearDown();
   }
@@ -236,7 +248,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
     }
     
     //clear space
-    spaceService.deleteSpace(savedSpace);
+    tearDownSpaceList.add(savedSpace);
 
   }
 
@@ -340,7 +352,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
     // load profile = true
     {
       gotIdentity1 = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME,
-                                                         username1);
+                                                         username1, true);
       
       Profile profile1 = gotIdentity1.getProfile();
 
@@ -352,7 +364,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
       assertFalse("profile1.getFullName().isEmpty() must return false", profile1.getFullName().isEmpty());
       
       assertNotNull("gotIdentity1.getId() must not be null", gotIdentity1.getId());
-      Identity regotIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, username1);
+      Identity regotIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, username1, true);
 
       assertNotNull("regotIdentity.getId() must not be null", regotIdentity.getId());
       assertNotNull("regotIdentity.getProfile().getId() must not be null", regotIdentity.getProfile().getId());
@@ -435,150 +447,142 @@ public class IdentityManagerTest extends AbstractCoreTest {
   public void testGetIdentitiesByProfileFilter() throws Exception {
     String providerId = OrganizationIdentityProvider.NAME;
     populateIdentities(5, true);
-    
-    populateData("root");
-    populateData("john");
-    populateData("mary");
-    populateData("raul");
-    populateData("ghost");
-    
+
     ProfileFilter pf = new ProfileFilter();
-    ListAccess idsListAccess = null;
+    ListAccess<Identity> idsListAccess = null;
     { // Test cases with name of profile.
       // Filter identity by first character.
       pf.setFirstCharacterOfName('F');
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 0, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(0, idsListAccess.getSize());
       pf.setFirstCharacterOfName('L');
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       // Filter identity by name.
       pf.setFirstCharacterOfName('\u0000');
       pf.setName("FirstName");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
-      pf.setName("FirstName root");
+      pf.setName("FirstName1");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 1, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(1, idsListAccess.getSize());
       
       //
       pf.setName("");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("*");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("n%me");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("n*me");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("%me");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("%name%");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("n%me");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("fir%n%me");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("noname");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities must be " + idsListAccess.getSize(), 0, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(0, idsListAccess.getSize());
     }
     
     { // Test cases with position of profile.
       pf.setName("");
       pf.setPosition("dev");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by position must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setPosition("d%v");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by position must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setPosition("test");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by position must be " + idsListAccess.getSize(), 0, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(0, idsListAccess.getSize());
     }
     
     { // Test cases with gender of profile.
       pf.setPosition("");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by gender must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
+      assertNotNull(idsListAccess);
     }
     
     { // Other test cases
       pf.setName("n**me%");
       pf.setPosition("*%");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by profile filter must be " + idsListAccess.getSize(), 5, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(5, idsListAccess.getSize());
       
       //
       pf.setName("noname");
       pf.setPosition("*%");
       idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
-      assertNotNull("Identity List Access must not be null", idsListAccess);
-      assertEquals("The number of identities get by profile filter must be " + idsListAccess.getSize(), 0, idsListAccess.getSize());
+      assertNotNull(idsListAccess);
+      assertEquals(0, idsListAccess.getSize());
     }
 
     //Tests with the case: add new identity and delete it after that to check
     {
       ProfileFilter profileFilter = new ProfileFilter();
       ListAccess<Identity> identityListAccess = identityManager.getIdentitiesByProfileFilter("organization", profileFilter, false);
-      assertEquals("identityListAccess.getSize() must return 5", 5, identityListAccess.getSize());
+      assertEquals(5, identityListAccess.getSize());
       
       //
       Identity testIdentity = populateIdentity("test", false);
-      ListAccess<Identity> identityListAccess1 = identityManager.getIdentitiesByProfileFilter("organization", new ProfileFilter(), false);
-      assertEquals(5, identityListAccess1.getSize());
       identityListAccess = identityManager.getIdentitiesByProfileFilter("organization", profileFilter, false);
-      assertEquals(5, identityListAccess.getSize());
+      assertEquals(6, identityListAccess.getSize());
       
       //
       identityManager.deleteIdentity(testIdentity);
@@ -588,16 +592,122 @@ public class IdentityManagerTest extends AbstractCoreTest {
 
     //Test with excluded identity list
     {
-      Identity rootIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "root", false);
+      Identity excludeIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "username1", false);
       List<Identity> excludedIdentities = new ArrayList<Identity>();
-      excludedIdentities.add(rootIdentity);
+      excludedIdentities.add(excludeIdentity);
       ProfileFilter profileFilter = new ProfileFilter();
       profileFilter.setExcludedIdentityList(excludedIdentities);
       ListAccess<Identity> identityListAccess = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, profileFilter, false);
       assertEquals(4, identityListAccess.getSize());
-      Identity[] identityArray = identityListAccess.load(0, 100);
-      assertEquals(4, identityArray.length);
+      Identity[] identityArray = identityListAccess.load(0, 3);
+      assertEquals(3, identityArray.length);
     }
+  }
+  
+  public void testGetIdentitiesWithSpecialCharacters() throws Exception {
+    Identity identity = new Identity(OrganizationIdentityProvider.NAME, "username1");
+    identityManager.saveIdentity(identity);
+    Profile profile = new Profile(identity);
+    profile.setProperty(Profile.USERNAME, "username1");
+    profile.setProperty(Profile.FIRST_NAME, "FirstName");
+    profile.setProperty(Profile.LAST_NAME, "LastName");
+    profile.setProperty(Profile.FULL_NAME, "FirstName LastName");
+    profile.setProperty(Profile.POSITION, StringEscapeUtils.escapeHtml("A&d"));
+    profile.setProperty(Profile.GENDER, "male");
+    identityManager.saveProfile(profile);
+    identity.setProfile(profile);
+    tearDownIdentityList.add(identity);
+    
+    ProfileFilter pf = new ProfileFilter();
+    pf.setPosition("A&d");
+    ListAccess<Identity> identityListAccess = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, pf, false);
+    assertEquals(1, identityListAccess.getSize());
+    assertEquals(1, identityListAccess.load(0, 10).length);
+    
+    profile.setProperty(Profile.POSITION, StringEscapeUtils.escapeHtml("!@#$%^&*()"));
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
+    identityManager.updateProfile(profile);
+    
+    pf.setPosition("!@#$%^&*()");
+    identityListAccess = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, pf, false);
+    assertEquals(1, identityListAccess.getSize());
+    assertEquals(1, identityListAccess.load(0, 10).length);
+    
+    //
+    HashMap<String, Object> uiMap = new HashMap<String, Object>();
+    ArrayList<HashMap<String, Object>> experiences = new ArrayList<HashMap<String, Object>>();
+    uiMap.put(Profile.EXPERIENCES_SKILLS, StringEscapeUtils.escapeHtml("!@#$%^&*()"));
+    experiences.add(uiMap);
+    profile.setProperty(Profile.EXPERIENCES, experiences);
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.EXPERIENCES));
+    identityManager.updateProfile(profile);
+    
+    pf = new ProfileFilter();
+    pf.setSkills("!@#$%^&*()");
+    identityListAccess = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, pf, false);
+    assertEquals(1, identityListAccess.getSize());
+    
+    //
+    uiMap = new HashMap<String, Object>();
+    experiences = new ArrayList<HashMap<String, Object>>();
+    uiMap.put(Profile.EXPERIENCES_SKILLS, StringEscapeUtils.escapeHtml("sale & marketing"));
+    experiences.add(uiMap);
+    profile.setProperty(Profile.EXPERIENCES, experiences);
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.EXPERIENCES));
+    identityManager.updateProfile(profile);
+    
+    pf = new ProfileFilter();
+    pf.setSkills("sale & marketing");
+    identityListAccess = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, pf, false);
+    assertEquals(1, identityListAccess.getSize());
+  }
+  
+  /**
+   * Test order {@link IdentityManager#getIdentitiesByProfileFilter(String, ProfileFilter, boolean)}
+   */
+  public void testOrderOfGetIdentitiesByProfileFilter() throws Exception {
+    // Create new users 
+    String providerId = "organization";
+    String[] FirstNameList = {"John","Bob","Alain"};
+    String[] LastNameList = {"Smith","Dupond","Dupond"};
+    for (int i = 0; i < 3; i++) {
+      String remoteId = "username" + i;
+      Identity identity = new Identity(providerId, remoteId);
+      identityManager.saveIdentity(identity);
+      Profile profile = new Profile(identity);
+      profile.setProperty(Profile.FIRST_NAME, FirstNameList[i]);
+      profile.setProperty(Profile.LAST_NAME, LastNameList[i]);
+      profile.setProperty(Profile.FULL_NAME, FirstNameList[i] + " " +  LastNameList[i]);
+      profile.setProperty(Profile.POSITION, "developer");
+      profile.setProperty(Profile.GENDER, "male");
+
+      identityManager.saveProfile(profile);
+      identity.setProfile(profile);
+      tearDownIdentityList.add(identity);   
+    }
+    
+    ProfileFilter pf = new ProfileFilter();
+    ListAccess<Identity> idsListAccess = null;
+    // Test order by last name
+    pf.setFirstCharacterOfName('D');
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertNotNull(idsListAccess);
+    assertEquals(2, idsListAccess.getSize());
+    assertEquals("Alain Dupond", idsListAccess.load(0, 20)[0].getProfile().getFullName());
+    assertEquals("Bob Dupond", idsListAccess.load(0, 20)[1].getProfile().getFullName());
+    
+    pf = new ProfileFilter();
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertNotNull(idsListAccess);
+    assertEquals(3, idsListAccess.getSize());
+    assertEquals("Alain Dupond", idsListAccess.load(0, 20)[0].getProfile().getFullName());
+    assertEquals("Bob Dupond", idsListAccess.load(0, 20)[1].getProfile().getFullName());
+    assertEquals("John Smith", idsListAccess.load(0, 20)[2].getProfile().getFullName());
+    
+    // Test order by first name if last name is equal
+    Identity[] identityArray = idsListAccess.load(0, 2);
+    assertEquals(tearDownIdentityList.get(2).getId(), identityArray[0].getId());
+    
   }
 
   /**
@@ -621,6 +731,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
     Identity rootIdentity = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "root");
     Profile profile = rootIdentity.getProfile();
     profile.setProperty(Profile.POSITION, "CEO");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
     Identity identityUpdated = identityManager.getOrCreateIdentity(rootIdentity.getProviderId(), rootIdentity.getRemoteId(), false);
@@ -883,6 +994,7 @@ public class IdentityManagerTest extends AbstractCoreTest {
         + newFirstName, newFirstName, gotRootIdentity.getProfile().getProperty(Profile.FIRST_NAME));
 
     try {
+      johnProfile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.AVATAR));
       identityManager.updateAvatar(johnProfile);
     } catch (Exception e1) {
       assert false : "can't update avatar" + e1 ;
@@ -901,5 +1013,66 @@ public class IdentityManagerTest extends AbstractCoreTest {
 
     List<ExoSocialActivity> johnActivityList = activityManager.getActivities(gotJohnIdentity, 0, 10);
     assertEquals("johnActivityList.size() must be 1", 1, johnActivityList.size());
+  }
+  
+  public void testGetIdentitiesByName() throws Exception {
+    User user = userHandler.createUserInstance("alex");
+    user.setFirstName("");
+    user.setLastName("");
+    user.setEmail("");
+    userHandler.createUser(user, true);
+    User found = userHandler.findUserByName("alex");
+    assertNotNull(found);
+    String providerId = OrganizationIdentityProvider.NAME;
+    
+    Identity identity = new Identity(providerId, "alex");
+    identityManager.saveIdentity(identity);
+    Profile profile = new Profile(identity);
+    profile.setProperty(Profile.USERNAME, "alex");
+    profile.setProperty(Profile.FIRST_NAME, "Mary");
+    profile.setProperty(Profile.LAST_NAME, "Williams");
+    profile.setProperty(Profile.FULL_NAME, "Mary " + "Williams");
+    profile.setProperty(Profile.POSITION, "developer");
+    profile.setProperty(Profile.GENDER, "female");
+    identityManager.saveProfile(profile);
+    identity.setProfile(profile);
+    tearDownIdentityList.add(identity);
+    
+    
+    ProfileFilter pf = new ProfileFilter();
+    
+    //Search by name full name
+    pf.setName("Mary");
+    ListAccess<Identity> idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    pf.setName("Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    pf.setName("Mary Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    
+    //update profile name
+    profile.setProperty(Profile.FIRST_NAME, "Mary-James");
+    profile.setProperty(Profile.FULL_NAME, "Mary-James Williams");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
+    identityManager.updateProfile(profile);
+    Identity alex = identityManager.getOrCreateIdentity(OrganizationIdentityProvider.NAME, "alex", true);
+    assertEquals("Mary-James Williams", alex.getProfile().getFullName());
+    
+    pf.setName("Mary-James Williams");
+    idsListAccess = identityManager.getIdentitiesByProfileFilter(providerId, pf, false);
+    assertEquals(1, idsListAccess.getSize());
+    
+    //
+    List<ExoSocialActivity> activities = activityManager.getActivitiesWithListAccess(identity).loadAsList(0, 20);
+    for (ExoSocialActivity act : activities) {
+      List<ExoSocialActivity> comments = activityManager.getCommentsWithListAccess(act).loadAsList(0, 20);
+      for (ExoSocialActivity cmt : comments) {
+        activityManager.deleteComment(act, cmt);
+      }
+      activityManager.deleteActivity(act);
+    }
+    userHandler.removeUser(user.getUserName(), false);
   }
 }

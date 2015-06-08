@@ -21,6 +21,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -73,7 +74,7 @@ public final class Util {
       "(?::[\\d]{1,5})?" +                                                                        // port
       "(?:[\\/|\\?|\\#].*)?$");                                                               // path and query
 
-
+  
   /**
    * Prevents constructing a new instance.
    */
@@ -425,7 +426,7 @@ public final class Util {
    *
    * @return the current http servlet request
    */
-  private static HttpServletRequest getCurrentServletRequest() {
+  public static HttpServletRequest getCurrentServletRequest() {
     EnvironmentContext environmentContext = EnvironmentContext.getCurrent();
     return (HttpServletRequest) environmentContext.get(HttpServletRequest.class);
   }
@@ -571,5 +572,47 @@ public final class Util {
     } finally {
       urlConnection = null;
     }
+  }
+  
+  /**
+   * Decode query parameters of string URL
+   * Example: Input: http://google.com?%3Cscript%3E
+   *         Output: http://google.com?<script>
+   *
+   * @param url The string URL to decode
+   * @return The URL decoded query parameters
+   * @since 4.1.0
+   */
+  public static String getDecodeQueryURL(String url) {
+    if (isValidURL(url)) {
+      String query;
+      try {
+        query = new URL(url).getQuery();
+        if (query != null) {
+          String newQuery = URLDecoder.decode(query, "UTF-8");
+          return url.replace(query, newQuery);
+        }
+      } catch (Exception e) {
+        return url;
+      }
+    }
+    return url;
+  }
+  
+  /**
+   * Checks if user is mentioned or not.
+   * 
+   * @param existingActivity Activity to check.
+   * @param identityId Identity Id to check mentioned or not.
+   * 
+   * @return true if input user has been mentioned in activity.
+   */
+  public static boolean hasMentioned(ExoSocialActivity existingActivity, String identityId) {
+    for (String mentioner : existingActivity.getMentionedIds()) {
+      if (mentioner.startsWith(identityId)) { // identityId@mentioned_times
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -17,6 +17,7 @@
 package org.exoplatform.social.core.listeners;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.exoplatform.container.PortalContainer;
@@ -26,6 +27,8 @@ import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.services.organization.UserProfile;
+import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.IdentityRegistry;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
@@ -57,6 +60,8 @@ public class SocialUserProfileEventListenerImplTest extends AbstractCoreTest {
     tearDownIdentityList = new ArrayList<Identity>();
     tearDownIdentityList.add(paul);
     tearDownIdentityList.add(raul);
+    org.exoplatform.services.security.Identity identity = getService(IdentityRegistry.class).getIdentity("root");
+    ConversationState.setCurrent(new ConversationState(identity));
   }
   
   private void fakePlugins() throws Exception {
@@ -163,15 +168,18 @@ public class SocialUserProfileEventListenerImplTest extends AbstractCoreTest {
     profile.setProperty(Profile.FIRST_NAME, "FirstName");
     profile.setProperty(Profile.LAST_NAME, "LastName");
     profile.setProperty(Profile.FULL_NAME, "FirstName" + " " +  "LastName");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
     //CONTACT INFO
     profile.setProperty(Profile.GENDER, "fmale");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
 
     //POSITION
     profile.setProperty(Profile.POSITION, "developer");
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
 
     RequestLifeCycle.end();
@@ -187,6 +195,7 @@ public class SocialUserProfileEventListenerImplTest extends AbstractCoreTest {
     assertNotNull(profile);
     //
     profile.setProperty(Profile.POSITION, position);
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
     //profile.setProperty(Profile.CONTACT_PHONES, new String[]{"098939179"});
@@ -204,6 +213,7 @@ public class SocialUserProfileEventListenerImplTest extends AbstractCoreTest {
     assertNotNull(profile);
         
     profile.setProperty(Profile.GENDER, gender);
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
     RequestLifeCycle.end();
@@ -218,6 +228,7 @@ public class SocialUserProfileEventListenerImplTest extends AbstractCoreTest {
     assertNotNull(profile);
         
     profile.setProperty(key, value);
+    profile.setListUpdateTypes(Arrays.asList(Profile.UpdateType.CONTACT));
     identityManager.updateProfile(profile);
     
     RequestLifeCycle.end();

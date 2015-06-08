@@ -31,6 +31,9 @@ public class ProfileLifeCycle extends AbstractLifeCycle<ProfileListener, Profile
   @Override
   protected void dispatchEvent(ProfileListener listener, ProfileLifeCycleEvent event) {
     switch(event.getType()) {
+    case ABOUT_ME :
+      listener.aboutMeUpdated(event);
+      break;
     case AVATAR_UPDATED :
       listener.avatarUpdated(event);
       break;
@@ -46,9 +49,16 @@ public class ProfileLifeCycle extends AbstractLifeCycle<ProfileListener, Profile
     case HEADER_UPDATED:
       listener.headerSectionUpdated(event);
       break;
+    case CREATED:
+      listener.createProfile(event);
+      break;
     default:
       break;
     }
+  }
+  
+  public void aboutMeUpdated(String username, Profile profile) {
+    broadcast(new ProfileLifeCycleEvent(Type.ABOUT_ME, username, profile));
   }
 
   public void avatarUpdated(String username, Profile profile) {
@@ -69,6 +79,10 @@ public class ProfileLifeCycle extends AbstractLifeCycle<ProfileListener, Profile
 
   public void headerUpdated(String username, Profile profile) {
     broadcast(new ProfileLifeCycleEvent(Type.HEADER_UPDATED, username, profile));
+  }
+  
+  public void createProfile(Profile profile) {
+    broadcast(new ProfileLifeCycleEvent(Type.CREATED, profile.getIdentity().getRemoteId(), profile));
   }
 
 }

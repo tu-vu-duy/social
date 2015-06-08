@@ -46,7 +46,7 @@ import org.exoplatform.webui.form.UIForm;
 
 @ComponentConfigs({
   @ComponentConfig(
-    template = "classpath:groovy/social/webui/space/UISocialGroupSelector.gtmpl",
+    template = "war:/groovy/social/webui/space/UISocialGroupSelector.gtmpl",
     events = {
       @EventConfig(phase = Phase.DECODE, listeners = UISocialGroupSelector.ChangeNodeActionListener.class),
       @EventConfig(phase = Phase.DECODE, listeners = UISocialGroupSelector.SelectGroupActionListener.class),
@@ -56,7 +56,7 @@ import org.exoplatform.webui.form.UIForm;
    @ComponentConfig(
      type = UIFilterableTree.class,
      id = "UITreeGroupSelector",
-     template = "classpath:groovy/social/webui/UIFilterableTree.gtmpl",
+     template = "war:/groovy/social/webui/UIFilterableTree.gtmpl",
      events = @EventConfig(listeners = UIFilterableTree.ChangeNodeActionListener.class, phase = Phase.DECODE)
    ),
    @ComponentConfig(
@@ -95,7 +95,6 @@ public class UISocialGroupSelector extends UIContainer {
     return selectGroup_;
   }
 
-  @SuppressWarnings("unchecked")
   public List<String> getListGroup() throws Exception {
     OrganizationService service = getApplicationComponent(OrganizationService.class);
     List<String> listGroup = new ArrayList<String>();
@@ -103,8 +102,7 @@ public class UISocialGroupSelector extends UIContainer {
     String remoteUser = reqCtx.getRemoteUser();
     if (getCurrentGroup() == null)
       return null;
-    Collection<Object> groups = service.getGroupHandler().findGroups(
-        getCurrentGroup());
+    Collection<Group> groups = service.getGroupHandler().findGroups(getCurrentGroup());
     if (groups.size() > 0) {
       for (Object child : groups) {
         Group childGroup = (Group) child;

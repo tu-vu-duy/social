@@ -17,9 +17,11 @@
 package org.exoplatform.social.core.space;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +32,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.portlet.PortletPreferences;
 import javax.servlet.http.HttpServletRequest;
 
 import org.exoplatform.application.registry.Application;
@@ -38,6 +39,7 @@ import org.exoplatform.application.registry.ApplicationCategory;
 import org.exoplatform.application.registry.ApplicationRegistryService;
 import org.exoplatform.commons.chromattic.ChromatticManager;
 import org.exoplatform.commons.chromattic.Synchronization;
+import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
@@ -80,6 +82,7 @@ import org.exoplatform.services.organization.MembershipType;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.services.organization.UserHandler;
+import org.exoplatform.services.organization.UserStatus;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.social.common.router.ExoRouter;
 import org.exoplatform.social.common.router.ExoRouter.Route;
@@ -89,7 +92,6 @@ import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.webui.application.WebuiRequestContext;
-import org.exoplatform.webui.application.portlet.PortletRequestContext;
 import org.gatein.common.i18n.LocalizedString;
 import org.gatein.common.util.Tools;
 import org.gatein.pc.api.Portlet;
@@ -365,7 +367,7 @@ public class SpaceUtils {
    */
   static class PortletCategoryComparator implements Comparator<ApplicationCategory> {
     public int compare(ApplicationCategory cat1, ApplicationCategory cat2) {
-      return cat1.getDisplayName().compareTo(cat2.getDisplayName());
+      return cat1.getDisplayName(true).compareTo(cat2.getDisplayName(true));
     }
   }
 
@@ -613,8 +615,6 @@ public class SpaceUtils {
     ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
     Synchronization synchronization = manager.getSynchronization();
     synchronization.setSaveOnClose(save);
-    RequestLifeCycle.end();
-    RequestLifeCycle.begin(container);
   }
   /**
    * Finds container by id
@@ -1182,9 +1182,16 @@ public class SpaceUtils {
     NavigationContext spaceNavCtx = getGroupNavigationContext(space.getGroupId());
 
     UserNavigation userNav = SpaceUtils.getUserPortal().getNavigation(spaceNavCtx.getKey());
+    
     UserNode parentUserNode = SpaceUtils.getUserPortal().getNode(userNav, Scope.CHILDREN, null, null);
-    UserNode spaceUserNode = parentUserNode.getChild(space.getUrl());
-    SpaceUtils.getUserPortal().updateNode(spaceUserNode, Scope.CHILDREN, null);
+    UserNode spaceUserNode = parentUserNode.getChildrenSize() > 0 ? parentUserNode.getChild(0) : null;
+    
+    if (spaceUserNode != null) {
+      SpaceUtils.getUserPortal().updateNode(spaceUserNode, Scope.CHILDREN, null);
+    } else {
+      LOG.warn("Failed to get because of spaceUserNode is NULL");
+    }
+    
     return spaceUserNode;
   }
   
@@ -1538,9 +1545,40 @@ public class SpaceUtils {
    */
 
   public static String removeSpecialCharacterInSpaceFilter(String input){
-    String result = input.replaceAll("[^\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]\\?\\*%0-9]", " ");
+    //We don't remove the character "'" because it's a normal character in french 
+    String result = input.replaceAll("[^\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]\\?\\*%0-9\\']", " ");
     result = result.replaceAll("\\s+", " ");
     return result.trim();
+  }
+  
+  /**
+   * As the similarity is provided in the search term, we need to extract the keyword that user enter in 
+   * the search form
+   * 
+   * @param input the search value include the similarity
+   * @return the search condition after process
+   */
+  public static String processUnifiedSearchCondition(String input) {
+    if (input.isEmpty()) {
+      return input;
+    } else if (input.indexOf("~") < 0 || input.indexOf("\\~") > 0) {
+      return input.trim();
+    }
+    StringBuilder builder = new StringBuilder();
+    //The similarity is added for each word in the search condition, ex : space~0.5 test~0.5
+    //then we need to process each word separately 
+    String[] tab = input.split(" ");
+    for (String s : tab){
+      if (s.isEmpty()) continue;
+      if (s.indexOf("~") > -1) {
+        String searchTerm = s.substring(0, s.lastIndexOf("~"));
+        builder.append(searchTerm).append(" ");
+      } else {
+        builder.append(s).append(" ");
+      }
+      
+    }
+    return builder.toString().trim();
   }
 
   /**
@@ -1624,5 +1662,64 @@ public class SpaceUtils {
   public static UserACL getUserACL() {
     ExoContainer container = ExoContainerContext.getCurrentContainer();
     return (UserACL) container.getComponentInstanceOfType(UserACL.class);
+  }
+  
+  /**
+   * Checks if an specific user has membership in group group with input membership types.
+   * 
+   * @param remoteId User to be checked.
+   * @param groupId Group information.
+   * @param membershipTypes membership types to be checked.
+   * @return true if user has membership in group with input type.
+   */
+  public static boolean isUserHasMembershipTypesInGroup(String remoteId, String groupId, String... membershipTypes) {
+    try {
+      for (String membershipType : membershipTypes) {
+        Membership membership = getOrganizationService().getMembershipHandler()
+            .findMembershipByUserGroupAndType(remoteId, groupId, membershipType);  
+        if (membership != null) return true;
+      }
+    } catch (Exception e) {
+      return false;
+    }
+    return false;
+  }
+  
+  /**
+   * Get users that have membership with group by input membership types.
+   * 
+   * @param groupId Group information.
+   * @param membershipTypes membership types to be get.
+   * @return List of users that have membership with group is input membership type.
+   */
+  public static List<String> findMembershipUsersByGroupAndTypes(String groupId, String... membershipTypes) {
+    if (groupId == null || membershipTypes == null) return Collections.<String>emptyList();
+    
+    Set<String> userNames = new HashSet<String>();
+    try {
+      Group group = getOrganizationService().getGroupHandler().findGroupById(groupId);
+      ListAccess<Membership> membershipsListAccess = getOrganizationService()
+          .getMembershipHandler().findAllMembershipsByGroup(group);
+      
+      Membership[] memberships = membershipsListAccess.load(0, membershipsListAccess.getSize());
+      
+      List<String> types = Arrays.asList(membershipTypes);
+      
+      for (Membership membership : memberships) {
+        if (!types.contains(membership.getMembershipType())) continue;
+        
+        String userName = membership.getUserName();
+        User user = getOrganizationService().getUserHandler()
+            .findUserByName(userName, UserStatus.ENABLED);
+        
+        if (user != null) {
+          userNames.add(userName);
+        }
+      }
+    } catch (Exception e) {
+      return new ArrayList<String>();
+    }
+    
+    return new ArrayList<String>(userNames);
   }
 }

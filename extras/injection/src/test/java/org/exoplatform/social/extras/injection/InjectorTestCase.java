@@ -17,6 +17,10 @@
 
 package org.exoplatform.social.extras.injection;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import org.exoplatform.component.test.AbstractKernelTest;
 import org.exoplatform.component.test.ConfigurationUnit;
 import org.exoplatform.component.test.ConfiguredBy;
@@ -33,11 +37,6 @@ import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
  * @version $Revision$
@@ -48,7 +47,8 @@ import java.util.Map;
   @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/exo.portal.component.portal-configuration.xml"),
   @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/standalone/exo.social.test.portal-configuration.xml"),
   @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/standalone/exo.social.test.jcr-configuration.xml"),
-  @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/standalone/exo.social.component.core.test.configuration.xml")
+  @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/standalone/exo.social.component.core.test.configuration.xml"),
+  @ConfigurationUnit(scope = ContainerScope.PORTAL, path = "conf/standalone/exo.social.component.common.test.configuration.xml")
 })
 public class InjectorTestCase extends AbstractKernelTest {
 
@@ -100,8 +100,9 @@ public class InjectorTestCase extends AbstractKernelTest {
 
     //
     for(String space : spaces) {
-      spaceService.deleteSpace(spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(space)));
-      Identity i = identityStorage.findIdentity(SpaceIdentityProvider.NAME, space.toLowerCase());
+      String spacePrettyName = SpaceUtils.cleanString(space);
+      spaceService.deleteSpace(spaceService.getSpaceByPrettyName(spacePrettyName));
+      Identity i = identityStorage.findIdentity(SpaceIdentityProvider.NAME, spacePrettyName);
       identityStorage.deleteIdentity(i);
     }
 
@@ -141,7 +142,7 @@ public class InjectorTestCase extends AbstractKernelTest {
     performMembershipTest(null, null);
   }
   
-  public void testPrefixSpaceMember() throws Exception {
+  public void TestPrefixSpaceMember() throws Exception {
     performMembershipTest("foo", "bar");
   }
   
@@ -175,9 +176,9 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "0"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "1"));
-    assertEquals(null, organizationService.getUserHandler().findUserByName(baseName + "2"));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(0)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(1)));
+    assertEquals(null, organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(2)));
 
     //
     params.put("number", "2");
@@ -187,11 +188,11 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "0"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "1"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "2"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(baseName + "3"));
-    assertEquals(null, organizationService.getUserHandler().findUserByName(baseName + "4"));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(0)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(1)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(2)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(3)));
+    assertEquals(null, organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(4)));
 
     //
     cleanIdentity(baseName, 4);
@@ -214,12 +215,12 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "0"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "1"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "2"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "3"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "4"));
-    assertEquals(null, organizationService.getUserHandler().findUserByName(userBaseName + "5"));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(0)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(1)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(2)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(3)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(4)));
+    assertEquals(null, organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(5)));
 
     //
     params.put("number", "2");
@@ -234,53 +235,53 @@ public class InjectorTestCase extends AbstractKernelTest {
     spaceInjector.inject(params);
 
     //
-    Space space0 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "0");
-    Space space1 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "1");
-    Space space2 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "2");
-    Space space3 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "3");
-    Space space4 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "4");
-    Space space5 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "5");
-    Space space6 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "6");
+    Space space0 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(0));
+    Space space1 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(1));
+    Space space2 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(2));
+    Space space3 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(3));
+    Space space4 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(4));
+    Space space5 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(5));
+    Space space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
 
     //
     assertNotNull(space0);
-    assertEquals(userBaseName + "1", space0.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space0.getManagers()[0]);
     assertNotNull(space1);
-    assertEquals(userBaseName + "1", space1.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space1.getManagers()[0]);
     assertNotNull(space2);
-    assertEquals(userBaseName + "2", space2.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space2.getManagers()[0]);
     assertNotNull(space3);
-    assertEquals(userBaseName + "2", space3.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space3.getManagers()[0]);
     assertNotNull(space4);
-    assertEquals(userBaseName + "3", space4.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space4.getManagers()[0]);
     assertNotNull(space5);
-    assertEquals(userBaseName + "3", space5.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space5.getManagers()[0]);
     assertEquals(null, space6);
 
     spaceInjector.inject(params);
 
     //
-    space6 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "6");
-    Space space7 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "7");
-    Space space8 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "8");
-    Space space9 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "9");
-    Space space10 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "10");
-    Space space11 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "11");
-    Space space12 = spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "12");
+    space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
+    Space space7 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(7));
+    Space space8 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(8));
+    Space space9 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(9));
+    Space space10 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(10));
+    Space space11 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(11));
+    Space space12 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(12));
 
     //
     assertNotNull(space6);
-    assertEquals(userBaseName + "1", space6.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space6.getManagers()[0]);
     assertNotNull(space7);
-    assertEquals(userBaseName + "1", space7.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space7.getManagers()[0]);
     assertNotNull(space8);
-    assertEquals(userBaseName + "2", space8.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space8.getManagers()[0]);
     assertNotNull(space9);
-    assertEquals(userBaseName + "2", space9.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space9.getManagers()[0]);
     assertNotNull(space10);
-    assertEquals(userBaseName + "3", space10.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space10.getManagers()[0]);
     assertNotNull(space11);
-    assertEquals(userBaseName + "3", space11.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space11.getManagers()[0]);
     assertEquals(null, space12);
 
     //
@@ -305,17 +306,17 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "0"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "1"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "2"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "3"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "4"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "5"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "6"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "7"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "8"));
-    assertNotNull(organizationService.getUserHandler().findUserByName(userBaseName + "9"));
-    assertEquals(null, organizationService.getUserHandler().findUserByName(userBaseName + "10"));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(0)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(1)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(2)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(3)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(4)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(5)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(6)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(7)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(8)));
+    assertNotNull(organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(9)));
+    assertEquals(null, organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(10)));
 
     //
     params.put("number", "2");
@@ -330,42 +331,42 @@ public class InjectorTestCase extends AbstractKernelTest {
     spaceInjector.inject(params);
 
     //
-    Space space0 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "0");
-    Space space1 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "1");
-    Space space2 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "2");
-    Space space3 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "3");
-    Space space4 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "4");
-    Space space5 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "5");
-    Space space6 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "6");
+    Space space0 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(0));
+    Space space1 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(1));
+    Space space2 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(2));
+    Space space3 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(3));
+    Space space4 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(4));
+    Space space5 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(5));
+    Space space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
 
     //
     assertNotNull(space0);
-    assertEquals(userBaseName + "1", space0.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space0.getManagers()[0]);
     assertEquals(1, space0.getManagers().length);
     assertEquals(1, space0.getMembers().length);
     
     assertNotNull(space1);
-    assertEquals(userBaseName + "1", space1.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space1.getManagers()[0]);
     assertEquals(1, space1.getManagers().length);
     assertEquals(1, space1.getMembers().length);
     
     assertNotNull(space2);
-    assertEquals(userBaseName + "2", space2.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space2.getManagers()[0]);
     assertEquals(1, space2.getManagers().length);
     assertEquals(1, space2.getMembers().length);
     
     assertNotNull(space3);
-    assertEquals(userBaseName + "2", space3.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space3.getManagers()[0]);
     assertEquals(1, space3.getManagers().length);
     assertEquals(1, space3.getMembers().length);
     
     assertNotNull(space4);
-    assertEquals(userBaseName + "3", space4.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space4.getManagers()[0]);
     assertEquals(1, space4.getManagers().length);
     assertEquals(1, space4.getMembers().length);
     
     assertNotNull(space5);
-    assertEquals(userBaseName + "3", space5.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space5.getManagers()[0]);
     assertEquals(1, space5.getManagers().length);
     assertEquals(1, space5.getMembers().length);
     
@@ -374,42 +375,42 @@ public class InjectorTestCase extends AbstractKernelTest {
     spaceInjector.inject(params);
 
     //
-    space6 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "6");
-    Space space7 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "7");
-    Space space8 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "8");
-    Space space9 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "9");
-    Space space10 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "10");
-    Space space11 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "11");
-    Space space12 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "12");
+    space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
+    Space space7 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(7));
+    Space space8 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(8));
+    Space space9 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(9));
+    Space space10 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(10));
+    Space space11 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(11));
+    Space space12 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(12));
 
     //
     assertNotNull(space6);
-    assertEquals(userBaseName + "1", space6.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space6.getManagers()[0]);
     assertEquals(1, space6.getManagers().length);
     assertEquals(1, space6.getMembers().length);
     
     assertNotNull(space7);
-    assertEquals(userBaseName + "1", space7.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(1), space7.getManagers()[0]);
     assertEquals(1, space7.getManagers().length);
     assertEquals(1, space7.getMembers().length);
     
     assertNotNull(space8);
-    assertEquals(userBaseName + "2", space8.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space8.getManagers()[0]);
     assertEquals(1, space8.getManagers().length);
     assertEquals(1, space8.getMembers().length);
     
     assertNotNull(space9);
-    assertEquals(userBaseName + "2", space9.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(2), space9.getManagers()[0]);
     assertEquals(1, space9.getManagers().length);
     assertEquals(1, space9.getMembers().length);
     
     assertNotNull(space10);
-    assertEquals(userBaseName + "3", space10.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space10.getManagers()[0]);
     assertEquals(1, space10.getManagers().length);
     assertEquals(1, space10.getMembers().length);
     
     assertNotNull(space11);
-    assertEquals(userBaseName + "3", space11.getManagers()[0]);
+    assertEquals(identityInjector.userNameSuffixPattern(3), space11.getManagers()[0]);
     assertEquals(1, space11.getManagers().length);
     assertEquals(1, space11.getMembers().length);
     
@@ -433,10 +434,10 @@ public class InjectorTestCase extends AbstractKernelTest {
     
     membershipInjector.inject(params);
 
-    space5 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "5");
-    space6 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "6");
-    space7 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "7");
-    space8 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "8");
+    space5 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(5));
+    space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
+    space7 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(7));
+    space8 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(8));
     
     assertEquals(4, space5.getMembers().length);
     assertEquals(4, space6.getMembers().length);
@@ -461,10 +462,10 @@ public class InjectorTestCase extends AbstractKernelTest {
     
     membershipInjector.inject(params);
 
-    space5 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "5");
-    space6 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "6");
-    space7 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "7");
-    space8 = spaceService.getSpaceByPrettyName(spacePrettyBaseName + "8");
+    space5 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(5));
+    space6 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(6));
+    space7 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(7));
+    space8 = spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(8));
     
     assertEquals(4, space5.getManagers().length);
     assertEquals(4, space6.getManagers().length);
@@ -493,11 +494,11 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    Identity user0 = identityManager.getOrCreateIdentity("organization", userBaseName + "0", false);
-    Identity user1 = identityManager.getOrCreateIdentity("organization", userBaseName + "1", false);
-    Identity user2 = identityManager.getOrCreateIdentity("organization", userBaseName + "2", false);
-    Identity user3 = identityManager.getOrCreateIdentity("organization", userBaseName + "3", false);
-    Identity user4 = identityManager.getOrCreateIdentity("organization", userBaseName + "4", false);
+    Identity user0 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(0), false);
+    Identity user1 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(1), false);
+    Identity user2 = identityManager.getOrCreateIdentity("organization",identityInjector.userNameSuffixPattern(2), false);
+    Identity user3 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(3), false);
+    Identity user4 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(4), false);
 
     //
     params.put("number", "5");
@@ -533,11 +534,11 @@ public class InjectorTestCase extends AbstractKernelTest {
     spaceInjector.inject(params);
 
     //
-    Identity space_user0 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName + "0", false);
-    Identity space_user1 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName + "1", false);
-    Identity space_user2 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName + "2", false);
-    Identity space_user3 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName + "3", false);
-    Identity space_user4 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName + "4", false);
+    Identity space_user0 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(0), false);
+    Identity space_user1 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(1), false);
+    Identity space_user2 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(2), false);
+    Identity space_user3 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(3), false);
+    Identity space_user4 = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(4), false);
 
     //
     params.put("number", "5");
@@ -580,16 +581,16 @@ public class InjectorTestCase extends AbstractKernelTest {
     identityInjector.inject(params);
 
     //
-    Identity user0 = identityManager.getOrCreateIdentity("organization", baseName + "0", false);
-    Identity user1 = identityManager.getOrCreateIdentity("organization", baseName + "1", false);
-    Identity user2 = identityManager.getOrCreateIdentity("organization", baseName + "2", false);
-    Identity user3 = identityManager.getOrCreateIdentity("organization", baseName + "3", false);
-    Identity user4 = identityManager.getOrCreateIdentity("organization", baseName + "4", false);
-    Identity user5 = identityManager.getOrCreateIdentity("organization", baseName + "5", false);
-    Identity user6 = identityManager.getOrCreateIdentity("organization", baseName + "6", false);
-    Identity user7 = identityManager.getOrCreateIdentity("organization", baseName + "7", false);
-    Identity user8 = identityManager.getOrCreateIdentity("organization", baseName + "8", false);
-    Identity user9 = identityManager.getOrCreateIdentity("organization", baseName + "9", false);
+    Identity user0 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(0), false);
+    Identity user1 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(1), false);
+    Identity user2 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(2), false);
+    Identity user3 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(3), false);
+    Identity user4 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(4), false);
+    Identity user5 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(5), false);
+    Identity user6 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(6), false);
+    Identity user7 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(7), false);
+    Identity user8 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(8), false);
+    Identity user9 = identityManager.getOrCreateIdentity("organization", identityInjector.userNameSuffixPattern(9), false);
 
     //
     params.put("number", "3");
@@ -620,13 +621,13 @@ public class InjectorTestCase extends AbstractKernelTest {
   private void assertClean(String userBaseName, String spacePrettyBaseName) throws Exception {
 
     if (userBaseName != null) {
-      assertEquals(null, organizationService.getUserHandler().findUserByName(userBaseName + "0"));
-      assertEquals(null, identityStorage.findIdentity(OrganizationIdentityProvider.NAME, userBaseName + "0"));
+      assertEquals(null, organizationService.getUserHandler().findUserByName(identityInjector.userNameSuffixPattern(0)));
+      assertEquals(null, identityStorage.findIdentity(OrganizationIdentityProvider.NAME, identityInjector.userNameSuffixPattern(0)));
     }
 
     if (spacePrettyBaseName != null) {
-      assertEquals(null, spaceService.getSpaceByPrettyName(SpaceUtils.cleanString(spacePrettyBaseName) + "0"));
-      assertEquals(null, identityStorage.findIdentity(SpaceIdentityProvider.NAME, spacePrettyBaseName.toLowerCase() + "0"));
+      assertEquals(null, spaceService.getSpaceByPrettyName(spaceInjector.spaceNameSuffixPattern(0)));
+      assertEquals(null, identityStorage.findIdentity(SpaceIdentityProvider.NAME, spaceInjector.spaceNameSuffixPattern(0)));
     }
 
   }
@@ -634,7 +635,7 @@ public class InjectorTestCase extends AbstractKernelTest {
   private void cleanIdentity(String prefix, int number) {
 
     for (int i = 0; i < number; ++i) {
-      users.add(prefix + i);
+      users.add(identityInjector.userNameSuffixPattern(i));
     }
 
   }
@@ -642,7 +643,7 @@ public class InjectorTestCase extends AbstractKernelTest {
   private void cleanSpace(String prefix, int number) {
 
     for (int i = 0; i < number; ++i) {
-      spaces.add(prefix + i);
+      spaces.add(spaceInjector.spaceNameSuffixPattern(i));
     }
 
   }

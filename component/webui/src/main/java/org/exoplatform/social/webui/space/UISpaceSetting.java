@@ -17,7 +17,10 @@
 package org.exoplatform.social.webui.space;
 
 import org.exoplatform.portal.application.PortalRequestContext;
+import org.exoplatform.portal.application.RequestNavigationData;
 import org.exoplatform.portal.webui.util.Util;
+import org.exoplatform.social.common.router.ExoRouter;
+import org.exoplatform.social.common.router.ExoRouter.Route;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
@@ -28,23 +31,21 @@ import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.ComponentConfigs;
 import org.exoplatform.webui.config.annotation.EventConfig;
 import org.exoplatform.webui.core.UIComponent;
-import org.exoplatform.webui.core.UIContainer;
 import org.exoplatform.webui.core.UIPopupContainer;
 import org.exoplatform.webui.core.UITabPane;
 import org.exoplatform.webui.event.Event;
-import org.exoplatform.webui.event.EventListener;
 
 @ComponentConfigs({
   @ComponentConfig(
-    template = "classpath:groovy/social/webui/space/UISpaceSetting.gtmpl"
+    template = "war:/groovy/social/webui/space/UISpaceSetting.gtmpl"
   ),
   @ComponentConfig(
     type = UITabPane.class,
     id = "UISpaceSettingTabPane",
-    template = "classpath:groovy/social/webui/space/UISpaceSettingPane.gtmpl",
-    events = { @EventConfig(listeners = UITabPane.SelectTabActionListener.class) })
+    template = "war:/groovy/social/webui/space/UISpaceSettingPane.gtmpl",
+    events = { @EventConfig(listeners = UISpaceSetting.SelectTabActionListener.class) })
   })
-public class UISpaceSetting extends UIContainer {
+public class UISpaceSetting extends UITabPane {
 
   private Space space;
 
@@ -67,6 +68,19 @@ public class UISpaceSetting extends UIContainer {
     Space space  = getApplicationComponent(SpaceService.class).getSpaceByUrl(spaceUrl);
     if (space != null) {
       setValues(space);
+    }
+  }
+  
+  public void initTabByContext() {
+    PortalRequestContext pcontext = Util.getPortalRequestContext();
+    String requestPath = pcontext.getControllerContext().getParameter(RequestNavigationData.REQUEST_PATH);
+    Route route = ExoRouter.route(requestPath);
+    if (route != null) {
+      String app = route.localArgs.get("appName");
+      String path = route.localArgs.get("path");
+      if ("settings".equals(app) && "members".equals(path)) {
+        getChild(UITabPane.class).setSelectedTab(3);
+      }
     }
   }
 
@@ -149,7 +163,7 @@ public class UISpaceSetting extends UIContainer {
    * When selecting tabs, deactivates application add popup from application tab
    * @author hoatle
    */
-  static public class SelectTabActionListener extends EventListener<UITabPane> {
+  static public class SelectTabActionListener extends UITabPane.SelectTabActionListener {
     public void execute(Event<UITabPane> event) throws Exception {
       UITabPane uiTabPane = event.getSource();
       WebuiRequestContext context = event.getRequestContext();
@@ -160,7 +174,6 @@ public class UISpaceSetting extends UIContainer {
       //The content must have to refresh.
       if (renderTab.equals(UISpaceNavigationManagement.class.getSimpleName())) {
         UISpaceNavigationManagement uiSpaceNavigation = uiTabPane.getChild(UISpaceNavigationManagement.class);
-        uiSpaceNavigation.reloadTreeData();
         UISpaceSetting uiSpaceSetting = (UISpaceSetting)uiTabPane.getParent();
         uiSpaceNavigation.setSpace(uiSpaceSetting.getSpace());
         event.getRequestContext().addUIComponentToUpdateByAjax(uiSpaceNavigation);

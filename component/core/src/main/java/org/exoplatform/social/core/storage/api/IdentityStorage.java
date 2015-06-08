@@ -18,8 +18,10 @@
 package org.exoplatform.social.core.storage.api;
 
 import java.util.List;
+import java.util.Set;
 
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
+import org.exoplatform.social.core.identity.model.ActiveIdentityFilter;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.model.Profile.AttachedActivityType;
@@ -161,6 +163,21 @@ public interface IdentityStorage {
                                                  long offset,
                                                  long limit,
                                                  boolean forceLoadOrReloadProfile) throws IdentityStorageException;
+  
+  /**
+   * Gets the identities for Unified Search.
+   *
+   * @param providerId Id of provider.
+   * @param profileFilter    Information of profile that used in filtering.
+   * @param offset           Start index of list to be get.
+   * @param limit            End index of list to be get.
+   * @return the identities
+   * @throws IdentityStorageException
+   * @since 4.0.x
+   */
+  public List<Identity> getIdentitiesForUnifiedSearch(final String providerId,
+                                                      final ProfileFilter profileFilter,
+                                                      long offset, long limit) throws IdentityStorageException;
 
   /**
    * Counts the number of identity by profile filter.
@@ -256,4 +273,24 @@ public interface IdentityStorage {
    * @since 4.0.0.Alpha1
    */
   public String getProfileActivityId(Profile profile, AttachedActivityType type);
+  
+  /**
+   * Gets the active user list base on the given ActiveIdentityFilter.
+   * 1. N days who last login less than N days.
+   * 2. UserGroup who belongs to this group.
+   * 
+   * @param filter
+   * @return 
+   * @since 4.1.0
+   */
+  public Set<String> getActiveUsers(ActiveIdentityFilter filter);
+  
+  /**
+   * Process enable/disable Identity
+   * 
+   * @param identity The Identity enable
+   * @param isEnable true if the user is enable, false if not
+   * @since 4.2.x
+   */
+  public void processEnabledIdentity(Identity identity, boolean isEnable);
 }

@@ -71,7 +71,7 @@ import org.gatein.common.util.ParameterValidation;
 
 @ComponentConfigs({
   @ComponentConfig(
-    template = "classpath:groovy/social/webui/space/UISpaceNavigationNodeSelector.gtmpl",
+    template = "war:/groovy/social/webui/space/UISpaceNavigationNodeSelector.gtmpl",
     events = {
       @EventConfig(listeners = UISpaceNavigationNodeSelector.ChangeNodeActionListener.class)
     }
@@ -840,7 +840,11 @@ public class UISpaceNavigationNodeSelector extends UIContainer {
                                                       null));
               return;
             } else {
-              spaceService.removeApplication(space.getId(), appName, appConfig[1]);
+              String parentNodeName = childNode.getParent().getName();
+              String rootNodeName = space.getPrettyName();
+              if (parentNodeName.equals(rootNodeName)) {
+                spaceService.removeApplication(space.getId(), appName, appConfig[1]);
+              }
               break;
             }
           }

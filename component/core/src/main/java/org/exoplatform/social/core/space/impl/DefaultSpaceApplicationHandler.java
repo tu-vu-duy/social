@@ -64,6 +64,7 @@ import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceApplicationHandler;
 import org.exoplatform.social.core.space.spi.SpaceService;
+import org.exoplatform.webui.application.WebuiRequestContext;
 
 /**
  * Default implementation for working with space applications.
@@ -320,9 +321,12 @@ public class DefaultSpaceApplicationHandler implements SpaceApplicationHandler {
       if (removedNode != null) {
         PageKey pageRef = removedNode.getState().getPageRef();
         if (pageRef.format() != null && pageRef.format().length() > 0) {
-          UIPortal uiPortal = Util.getUIPortal();
-          // Remove from cache
-          uiPortal.setUIPage(pageRef.format(), null);
+          //only clear UI caching when it's in UI context
+          if (WebuiRequestContext.getCurrentInstance() != null) {
+            UIPortal uiPortal = Util.getUIPortal();
+            // Remove from cache
+            uiPortal.setUIPage(pageRef.format(), null);
+          }
           pageService.destroyPage(pageRef);
         }
       }
@@ -423,7 +427,7 @@ public class DefaultSpaceApplicationHandler implements SpaceApplicationHandler {
                                           page.isShowMaxWindow(), 
                                           page.getFactoryId(), 
                                           page.getAccessPermissions() != null ? Arrays.asList(page.getAccessPermissions()) : null, 
-                                          page.getEditPermission());
+                                          page.getEditPermission(), Arrays.asList(page.getMoveAppsPermissions()), Arrays.asList(page.getMoveContainersPermissions()));
       
       //setting some data to page.
       setPage(space, app, gadgetApplication, portletApplication, page);
@@ -436,16 +440,10 @@ public class DefaultSpaceApplicationHandler implements SpaceApplicationHandler {
     } catch (Exception e) {
       LOG.warn(e.getMessage(), e);
     }
+   
     
-    
-    String label = SpaceUtils.getDisplayAppName(app.getDisplayName());
-    if (spaceApplication.getAppTitle() != null && !spaceApplication.getAppTitle().isEmpty()) {
-      label = spaceApplication.getAppTitle();
-    }
-
     if (isRoot) {
       pageName = space.getUrl();
-      label = space.getDisplayName();
     } else {
       if (spaceApplication.getUri() != null && !spaceApplication.getUri().isEmpty()) {
         pageName = spaceApplication.getUri();
@@ -453,7 +451,7 @@ public class DefaultSpaceApplicationHandler implements SpaceApplicationHandler {
       
     }
     NodeContext<NodeContext<?>> childNodeCtx = nodeCtx.add(null, pageName);
-    childNodeCtx.setState(new NodeState.Builder().label(label).icon(spaceApplication.getIcon()).pageRef(PageKey.parse(page.getPageId())).build());
+    childNodeCtx.setState(new NodeState.Builder().icon(spaceApplication.getIcon()).pageRef(PageKey.parse(page.getPageId())).build());
     return childNodeCtx;
   }
 

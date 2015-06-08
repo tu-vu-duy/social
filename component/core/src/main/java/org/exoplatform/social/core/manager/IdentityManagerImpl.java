@@ -32,10 +32,13 @@ import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess;
 import org.exoplatform.social.core.identity.SpaceMemberFilterListAccess.Type;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
+import org.exoplatform.social.core.identity.model.Profile.UpdateType;
+import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.profile.ProfileLifeCycle;
 import org.exoplatform.social.core.profile.ProfileListener;
 import org.exoplatform.social.core.profile.ProfileListenerPlugin;
+import org.exoplatform.social.core.search.Sorting;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.webui.exception.MessageException;
@@ -85,6 +88,14 @@ public class IdentityManagerImpl implements IdentityManager {
     this.addIdentityProvider(defaultIdentityProvider);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  public List<Identity> getLastIdentities(int limit) {
+    ProfileFilter profileFilter = new ProfileFilter();
+    profileFilter.setSorting(new Sorting(Sorting.SortBy.DATE, Sorting.OrderBy.DESC));
+    return identityStorage.getIdentitiesForUnifiedSearch(OrganizationIdentityProvider.NAME, profileFilter, 0, limit);
+  }
 
   /**
    * {@inheritDoc}
@@ -215,6 +226,14 @@ public class IdentityManagerImpl implements IdentityManager {
   public List<Identity> getIdentitiesByProfileFilter(String providerId, ProfileFilter profileFilter) throws Exception {
     return Arrays.asList(getIdentitiesByProfileFilter(providerId, profileFilter, false).load(OFFSET, LIMIT));
   }
+  
+  /**
+   * {@inheritDoc}
+   */
+  public ListAccess<Identity> getIdentitiesForUnifiedSearch(String providerId,
+                                                            ProfileFilter profileFilter) {
+    return (new ProfileFilterListAccess(identityStorage, providerId, profileFilter, true, ProfileFilterListAccess.Type.UNIFIED_SEARCH));
+  }
 
   /**
    * {@inheritDoc}
@@ -328,6 +347,11 @@ public class IdentityManagerImpl implements IdentityManager {
         saveIdentity(identityFoundByRemoteProvider);
         this.getIdentityStorage().saveProfile(identityFoundByRemoteProvider.getProfile());
         result = identityFoundByRemoteProvider;
+        
+        // case of create new space or user, an event will be called only in case of create user
+        if (OrganizationIdentityProvider.NAME.equals(providerId)) {
+          profileLifeCycle.createProfile(result.getProfile());
+        }
       } else {
         // Not found in provider, so return null
         return result;
@@ -510,16 +534,14 @@ public class IdentityManagerImpl implements IdentityManager {
    * @since 1.2.0-GA
    */
   protected void broadcastUpdateProfileEvent(Profile profile) {
-    if (profile.getUpdateType().equals(Profile.UpdateType.POSITION)) {// updateHeaderSection
-      profileLifeCycle.headerUpdated(profile.getIdentity().getRemoteId(), profile);
-    } else if (profile.getUpdateType().equals(Profile.UpdateType.BASIC_INFOR)) { // updateBasicInfo
-      profileLifeCycle.basicUpdated(profile.getIdentity().getRemoteId(), profile);
-    } else if (profile.getUpdateType().equals(Profile.UpdateType.AVATAR)) { // updateAvatar
-      profileLifeCycle.avatarUpdated(profile.getIdentity().getRemoteId(), profile);
-    } else if (profile.getUpdateType().equals(Profile.UpdateType.CONTACT)) { // updateContactSection
-      profileLifeCycle.contactUpdated(profile.getIdentity().getRemoteId(), profile);
-    } else if (profile.getUpdateType().equals(Profile.UpdateType.EXPERIENCES)) { // updateExperienceSection
-      profileLifeCycle.experienceUpdated(profile.getIdentity().getRemoteId(), profile);
+    for (UpdateType type : profile.getListUpdateTypes()) {
+      type.updateActivity(profileLifeCycle, profile);
     }
+  }
+
+  @Override
+  public void processEnabledIdentity(String remoteId, boolean isEnable) {
+    Identity identity = getOrCreateIdentity(OrganizationIdentityProvider.NAME, remoteId, false);
+    this.getIdentityStorage().processEnabledIdentity(identity, isEnable);
   }
 }
