@@ -296,13 +296,17 @@ var UIActivity = {
     var body = $('body:first').removeClass('phoneDisplay').removeClass('tabletDisplay');
     var isMobile = body.find('.visible-phone:first').css('display') !== 'none';
     var isTablet = body.find('.visible-tablet:first').css('display') !== 'none';
+	var isTabletL = body.find('.visible-tabletL:first').css('display') !== 'none';
     if (isMobile) {
       body.addClass('phoneDisplay');
     }
     if (isTablet) {
       body.addClass('tabletDisplay');
     }
-    return {'isMobile' : isMobile, 'isTablet' : isTablet};
+	if (isTabletL) {
+      body.addClass('tabletLDisplay');
+    }
+    return {'isMobile' : isMobile, 'isTablet' : isTablet, 'isTabletL' : isTabletL};
   },
   responsiveMobile : function(id) {
     //
@@ -311,20 +315,24 @@ var UIActivity = {
     } else {
       UIActivity.responsiveId = id;
     }
+    var resetRightHeight = function() {
+      var wHeight = $(window).height();
+      var leftBody = $('td.LeftNavigationTDContainer.TDContainer:first').css('height', 'auto');
+      var h = leftBody.height();
+      leftBody.height(Math.max(wHeight, h));
+      var rightTD = $('td.RightBodyTDContainer.TDContainer:first');
+      rightTD.css('min-height', Math.max(wHeight, h, rightTD.height()) + 'px');
+    };
+    var deviceInfo = UIActivity.checkDevice();
+    if(deviceInfo.isMobile === true || deviceInfo.isTablet === true ||  deviceInfo.isTabletL === true  ) {
+      resetRightHeight();
+    }
     var root = $('#'+id);
-    if(root.length > 0 && UIActivity.checkDevice().isMobile === true) {
+    if(root.length > 0 && deviceInfo.isMobile === true) {
       var hidenComposer = function(elm) {
         $('#UIUserActivitiesDisplay').removeClass('hidden-phone');
         return elm.parents('.uiComposer:first').addClass('hidden-phone');
       };
-      var resetRightHeight = function() {
-        var wHeight = $(window).height();
-        var leftBody = $('td.LeftNavigationTDContainer.TDContainer:first').css('height', 'auto');
-        var h = leftBody.height();
-        leftBody.height(Math.max(wHeight, h));
-        var rightTD = $('td.RightBodyTDContainer.TDContainer:first');
-        rightTD.css('min-height', Math.max(wHeight, h, rightTD.height()) + 'px');
-      }
       //
       root.find('.changeStatus').click(function(evt) {
         resetRightHeight();
