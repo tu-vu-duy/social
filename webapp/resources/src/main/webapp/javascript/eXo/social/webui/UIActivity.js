@@ -90,7 +90,7 @@ var UIActivity = {
       commentLinkEl.off('click').on('click', function (evt) {
         if (UIActivity.checkDevice().isMobile === true) {
           $('.footComment').find('div.replaceTextArea:first').focus();
-          return false;
+          return true;
         }
         //
         var currentActivityId = $(this).attr('id').replace('CommentLink', '');
@@ -308,6 +308,9 @@ var UIActivity = {
     }
     return {'isMobile' : isMobile, 'isTablet' : isTablet, 'isTabletL' : isTabletL};
   },
+  hasClass : function(target, cssClass) {
+    return (target.hasClass(cssClass) || target.find('>.' + cssClass).length > 0)
+  },
   responsiveMobile : function(id) {
     //
     if (typeof id === 'undefined' && UIActivity.responsiveId) {
@@ -364,10 +367,24 @@ var UIActivity = {
       //
       $('.inputContainer').addClass('hidden-phone');
       //activityStream
-      root.find('.activityStream').click(function(evt) {
+      var activities = root.find('.activityStream');
+      if(activities.length === 0) {
+        activities = root.find('.uiActivityLoader');
+      }
+      activities.click(function(evt) {
         if(UIActivity.checkDevice().isMobile === true) {
           var activity = $(this);
-          if(activity.hasClass('block-activity')) {
+          if(activity.hasClass('uiActivityLoader')) {
+            activity = activity.find('.activityStream:first');
+          }
+          var target = $(evt.target);
+          if(activity.length === 0 ||
+              activity.hasClass('block-activity') ||
+              UIActivity.hasClass(target, 'uiIconWatch') ||
+              UIActivity.hasClass(target, 'uiIconDownload') ||
+              UIActivity.hasClass(target, 'uiIconThumbUp') ||
+              UIActivity.hasClass(target, 'uiIconLink') ||
+              UIActivity.hasClass(target, 'uiIconClose')) {
             return true;
           }
           $('html, body').animate({scrollTop: 16}, 'slow');
