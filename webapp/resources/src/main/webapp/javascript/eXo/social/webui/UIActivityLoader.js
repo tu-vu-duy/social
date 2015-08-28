@@ -21,7 +21,8 @@
 	        var distanceToBottom = UIActivityLoader.scrollBottom();
 	        var loadAnimation = $('#UIActivitiesLoader').find('div.ActivityIndicator'); 
 	        var isLoading = loadAnimation.css("display") != "none";
-	        if (distanceToBottom <= UIActivityLoader.delta && !isLoading) {
+	        var isSingleActivityOnPhone = ($('.activityDisplay').length > 0);
+	        if (distanceToBottom <= UIActivityLoader.delta && !isLoading && !isSingleActivityOnPhone) {
 	          if (UIActivityLoader.hasMore === true) {
 	            $(loadAnimation).stop(true, true).fadeIn(
                     500, function() {
