@@ -50,6 +50,7 @@ import org.exoplatform.web.application.JavascriptManager;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.application.portlet.PortletRequestContext;
 import org.exoplatform.webui.core.UIApplication;
+import org.exoplatform.webui.core.UIPortletApplication;
 import org.exoplatform.webui.core.lifecycle.WebuiBindingContext;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
@@ -811,16 +812,17 @@ public class BaseUIActivity extends UIForm {
       UIActivitiesContainer activitiesContainer = uiActivity.getParent();
       activitiesContainer.removeChildById(uiActivity.getId());
       activitiesContainer.removeActivity(uiActivity.getActivity());
+      WebuiRequestContext context = event.getRequestContext();
+      context.getJavascriptManager().require("SHARED/social-ui-activity", "activity")
+             .addScripts("activity.responsiveMobile('" + activitiesContainer.getAncestorOfType(UIPortletApplication.class).getId() + "');");
       if (activitiesContainer.getActivityList().size() == 0) {
-        event.getRequestContext().addUIComponentToUpdateByAjax(activitiesContainer.getParent().getParent());
+        context.addUIComponentToUpdateByAjax(activitiesContainer.getParent().getParent());
       } else {
         event.getRequestContext().addUIComponentToUpdateByAjax(activitiesContainer.getParent());
       }
-      
       Utils.clearUserProfilePopup();
       Utils.resizeHomePage();
     }
-
   }
 
   public static class DeleteCommentActionListener extends EventListener<BaseUIActivity> {
